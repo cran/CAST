@@ -1,0 +1,10 @@
+0c9b91b1d4f869f86d12ceba8040a4fc *DESCRIPTION
+2e4a4d0d16229af722a8a4ea7aba9604 *LICENSE
+109053848e207fc23ddeb673f4a226cb *NAMESPACE
+c9ad70a6a22ad6a405e066a3c5011218 *R/CAST-package.R
+2e295f25813a020de4e5e76685708a33 *R/CreateSpacetimeFolds.R
+15437dfdfd899461199fef6ab42e0b89 *R/ffs.R
+b6e28a3b53c0179eed92a7a653826e7d *inst/extdata/Cookfarm.RData
+c28e2f9edf617375781cda9584e94e02 *man/CAST.Rd
+f5a7435f3477f681e3fd70375c98b512 *man/CreateSpacetimeFolds.Rd
+8959dc3ab4660a7dcfaff966c882b0cd *man/ffs.Rd
