@@ -88,10 +88,17 @@ ffs <- function (predictors,
                  tuneGrid = NULL,
                  seed = sample(1:1000, 1),
                  ...){
+  if (trControl$method=="LOOCV"){
+    if (withinSE==TRUE){
+      print("warning: withinSE is set to FALSE as no SE can be calculated using method LOOCV")
+      withinSE = FALSE
+  }}
   se <- function(x){sd(x, na.rm = TRUE)/sqrt(length(na.exclude(x)))}
   n <- length(names(predictors))
   acc <- 0
-  perf_all <- list()
+  perf_all <- data.frame(matrix(ncol=length(predictors)+3,nrow=2*(n-1)^2/2))
+  names(perf_all) <- c(paste0("var",1:length(predictors)),metric,"SE","nvar")
+
   if(maximize) evalfunc <- function(x){max(x,na.rm=T)}
   if(!maximize) evalfunc <- function(x){min(x,na.rm=T)}
   isBetter <- function (actmodelperf,bestmodelperf,
@@ -110,19 +117,20 @@ ffs <- function (predictors,
   #### chose initial best model from all combinations of two variables
   twogrid <- t(data.frame(combn(names(predictors),2)))
   for (i in 1:nrow(twogrid)){
+    print(paste0("model using ",paste0(twogrid[i,],collapse=","), " will be trained now..." ))
     set.seed(seed)
     model <- caret::train(predictors[,twogrid[i,]],
-                   response,
-                   method=method,
-                   trControl=trControl,
-                   tuneLength = tuneLength,
-                   tuneGrid = tuneGrid)
+                          response,
+                          method=method,
+                          trControl=trControl,
+                          tuneLength = tuneLength,
+                          tuneGrid = tuneGrid)
     ### compare the model with the currently best model
     actmodelperf <- evalfunc(model$results[,names(model$results)==metric])
-      actmodelperfSE <- se(
-        sapply(unique(model$resample$Resample),
-               FUN=function(x){mean(model$resample[model$resample$Resample==x,
-                                                   metric])}))
+    actmodelperfSE <- se(
+      sapply(unique(model$resample$Resample),
+             FUN=function(x){mean(model$resample[model$resample$Resample==x,
+                                                 metric])}))
     if (i == 1){
       bestmodelperf <- actmodelperf
       bestmodelperfSE <- actmodelperfSE
@@ -130,19 +138,15 @@ ffs <- function (predictors,
     } else{
       if (isBetter(actmodelperf,bestmodelperf,maximization=maximize,withinSE=FALSE)){
         bestmodelperf <- actmodelperf
-        if(withinSE){
-          bestmodelperfSE <- actmodelperfSE
-        }
+        bestmodelperfSE <- actmodelperfSE
         bestmodel <- model
       }
     }
     acc <- acc+1
-    perf_all[[acc]] <- list(
-      model$finalModel$xNames,
-      actmodelperf,actmodelperfSE)
-    names(perf_all[[acc]]) <- c("variables",metric,"SE")
+   perf_all[acc,1:length(model$finalModel$xNames)] <- model$finalModel$xNames
+    perf_all[acc,(length(predictors)+1):ncol(perf_all)] <- c(actmodelperf,actmodelperfSE,length(model$finalModel$xNames))
     print(paste0("maxmimum number of models that still need to be trained: ",
-                 2*(n-1)^2/2-acc))
+                 (n-1)^2-acc))
   }
   #### increase the number of predictors by one (try all combinations)
   #and test if model performance increases
@@ -153,6 +157,7 @@ ffs <- function (predictors,
   } else{
     selectedvars_perf <- min(bestmodel$results[,metric])
   }
+  selectedvars_SE <- bestmodelperfSE #
   print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
                " with ",metric," ",round(selectedvars_perf,3)))
   for (k in 1:(length(names(predictors))-2)){
@@ -165,40 +170,43 @@ ffs <- function (predictors,
                      length(startvars), " variables"))
       bestmodel$selectedvars <- selectedvars
       bestmodel$selectedvars_perf <- selectedvars_perf[-length(selectedvars_perf)]
-      names(perf_all) <- paste0("run_", 1:length(perf_all))
+      bestmodel$selectedvars_perf_SE <- selectedvars_SE[-length(selectedvars_SE)] #!!!
       bestmodel$perf_all <- perf_all
+      bestmodel$perf_all <- bestmodel$perf_all[!apply(is.na(bestmodel$perf_all), 1, all),]
       return(bestmodel)
       break()
     }
     for (i in 1:length(nextvars)){
+      print(paste0("model using additional variable ",nextvars[i], " will be trained now..." ))
       set.seed(seed)
       model <- caret::train(predictors[,c(startvars,nextvars[i])],
-                     response,
-                     method = method,
-                     trControl = trControl,
-                     tuneLength = tuneLength,
-                     tuneGrid = tuneGrid)
+                            response,
+                            method = method,
+                            trControl = trControl,
+                            tuneLength = tuneLength,
+                            tuneGrid = tuneGrid)
       actmodelperf <- evalfunc(model$results[,names(model$results)==metric])
-        actmodelperfSE <- se(
-          sapply(unique(model$resample$Resample),
-                 FUN=function(x){mean(model$resample[model$resample$Resample==x,
-                                                     metric])}))
-      if(isBetter(actmodelperf,bestmodelperf,bestmodelperfSE,
+      actmodelperfSE <- se(
+        sapply(unique(model$resample$Resample),
+               FUN=function(x){mean(model$resample[model$resample$Resample==x,
+                                                   metric])}))
+      if(isBetter(actmodelperf,bestmodelperf,
+                  selectedvars_SE[length(selectedvars_SE)], #SE from model with nvar-1
                   maximization=maximize,withinSE=withinSE)){
         bestmodelperf <- actmodelperf
-          bestmodelperfSE <- actmodelperfSE
+        bestmodelperfSE <- actmodelperfSE
         bestmodel <- model
       }
       acc <- acc+1
-      perf_all[[acc]] <- list(
-        model$finalModel$xNames,
-        actmodelperf,actmodelperfSE)
-      names(perf_all[[acc]]) <- c("variables",metric,"SE")
-      print(paste0("maxmimum number of models that still need to be trained: ",
-                   2*(n-1)^2/2-acc))
+      perf_all[acc,1:length(model$finalModel$xNames)] <- model$finalModel$xNames
+      perf_all[acc,(length(predictors)+1):ncol(
+        perf_all)] <- c(actmodelperf,actmodelperfSE,length(model$finalModel$xNames))
+     print(paste0("maxmimum number of models that still need to be trained: ",
+                  (n-1)^2-acc))
     }
     selectedvars <- c(selectedvars,names(bestmodel$trainingData)[-which(
       names(bestmodel$trainingData)%in%c(".outcome",selectedvars))])
+    selectedvars_SE <- c(selectedvars_SE,bestmodelperfSE)
     if (maximize){
       selectedvars_perf <- c(selectedvars_perf,max(bestmodel$results[,metric]))
       print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
@@ -212,7 +220,8 @@ ffs <- function (predictors,
   }
   bestmodel$selectedvars <- selectedvars
   bestmodel$selectedvars_perf <- selectedvars_perf
-  names(perf_all) <- paste0("run_", 1:length(perf_all))
+  bestmodel$selectedvars_perf_SE <- selectedvars_SE
   bestmodel$perf_all <- perf_all
+  bestmodel$perf_all <- bestmodel$perf_all[!apply(is.na(bestmodel$perf_all), 1, all),]
   return(bestmodel)
 }
