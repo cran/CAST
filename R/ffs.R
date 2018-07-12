@@ -11,6 +11,7 @@
 #' @param tuneLength see \code{\link{train}}
 #' @param tuneGrid see \code{\link{train}}
 #' @param seed A random number used for model training
+#' @param verbose Logical. Should information about the progress be printed?
 #' @param ... arguments passed to the classification or regression routine
 #' (such as randomForest). Errors will occur if values for tuning parameters are
 #' passed here.
@@ -53,25 +54,45 @@
 #' ffsmodel$selectedvars
 #' ffsmodel$selectedvars_perf
 #'}
+#'
 #' # or perform model with target-oriented validation (LLO CV)
 #' #the example is taken from the GSIF package and is described
 #' #in Gasch et al. (2015). The ffs approach for this dataset is described in
-#' #Meyer et al. (2018).
-#' #Due to high computation time needed, only a small and thus not robust example
-#' #is shown here. Run it in parallel on 3 cores:
+#' #Meyer et al. (2018). Due to high computation time needed, only a small and thus not robust example
+#' #is shown here.
+#'
 #' \dontrun{
+#' #run the model on three cores:
 #' library(doParallel)
 #' cl <- makeCluster(3)
 #' registerDoParallel(cl)
 #'
+#' #load and prepare dataset:
 #' dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
-#' trainDat <- dat[createDataPartition(dat$VW, p = 0.001,list=FALSE),]
-#' indices <- CreateSpacetimeFolds(trainDat,spacevar = "SOURCEID")
-#' predictors <- c("DEM","TWI","NDRE.M","Bt","BLD","PHI","Precip_cum","cdayt")
-#' ffsmodel <- ffs(trainDat[,predictors],trainDat$VW,method="rf",
-#' trControl=trainControl(method="cv",index=indices$index,indexOut=indices$indexOut),
-#' tuneLength=1)
+#' trainDat <- dat[dat$altitude==-0.3&year(dat$Date)==2012&week(dat$Date)%in%c(13:14),]
 #'
+#' #visualize dataset:
+#' ggplot(data = trainDat, aes(x=Date, y=VW)) + geom_line(aes(colour=SOURCEID))
+#'
+#' #create folds for Leave Location Out Cross Validation:
+#' set.seed(10)
+#' indices <- CreateSpacetimeFolds(trainDat,spacevar = "SOURCEID",k=3)
+#' ctrl <- trainControl(method="cv",index = indices$index)
+#'
+#' #define potential predictors:
+#' predictors <- c("DEM","TWI","BLD","Precip_cum","cday","MaxT_wrcc",
+#' "Precip_wrcc","NDRE.M","Bt","MinT_wrcc","Northing","Easting")
+#'
+#' #run ffs model with Leave Location out CV
+#' set.seed(10)
+#' ffsmodel <- ffs(trainDat[,predictors],trainDat$VW,method="rf",
+#' tuneLength=1,trControl=ctrl)
+#' ffsmodel
+#'
+#' #compare to model without ffs:
+#' model <- ffs(trainDat[,predictors],trainDat$VW,method="rf",
+#' tuneLength=1, trControl=ctrl)
+#' model
 #' stopCluster(cl)
 #'}
 #' @export ffs
@@ -87,12 +108,13 @@ ffs <- function (predictors,
                  tuneLength = 3,
                  tuneGrid = NULL,
                  seed = sample(1:1000, 1),
+                 verbose=TRUE,
                  ...){
   if (trControl$method=="LOOCV"){
     if (withinSE==TRUE){
       print("warning: withinSE is set to FALSE as no SE can be calculated using method LOOCV")
       withinSE = FALSE
-  }}
+    }}
   se <- function(x){sd(x, na.rm = TRUE)/sqrt(length(na.exclude(x)))}
   n <- length(names(predictors))
   acc <- 0
@@ -117,7 +139,9 @@ ffs <- function (predictors,
   #### chose initial best model from all combinations of two variables
   twogrid <- t(data.frame(combn(names(predictors),2)))
   for (i in 1:nrow(twogrid)){
-    print(paste0("model using ",paste0(twogrid[i,],collapse=","), " will be trained now..." ))
+    if (verbose){
+      print(paste0("model using ",paste0(twogrid[i,],collapse=","), " will be trained now..." ))
+    }
     set.seed(seed)
     model <- caret::train(predictors[,twogrid[i,]],
                           response,
@@ -143,10 +167,12 @@ ffs <- function (predictors,
       }
     }
     acc <- acc+1
-   perf_all[acc,1:length(model$finalModel$xNames)] <- model$finalModel$xNames
+    perf_all[acc,1:length(model$finalModel$xNames)] <- model$finalModel$xNames
     perf_all[acc,(length(predictors)+1):ncol(perf_all)] <- c(actmodelperf,actmodelperfSE,length(model$finalModel$xNames))
-    print(paste0("maxmimum number of models that still need to be trained: ",
-                 (n-1)^2-acc))
+    if(verbose){
+      print(paste0("maxmimum number of models that still need to be trained: ",
+                   (n-1)^2-acc))
+    }
   }
   #### increase the number of predictors by one (try all combinations)
   #and test if model performance increases
@@ -157,9 +183,11 @@ ffs <- function (predictors,
   } else{
     selectedvars_perf <- min(bestmodel$results[,metric])
   }
-  selectedvars_SE <- bestmodelperfSE #
-  print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
-               " with ",metric," ",round(selectedvars_perf,3)))
+  selectedvars_SE <- bestmodelperfSE
+  if(verbose){
+    print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
+                 " with ",metric," ",round(selectedvars_perf,3)))
+  }
   for (k in 1:(length(names(predictors))-2)){
     startvars <- names(bestmodel$trainingData)[-which(
       names(bestmodel$trainingData)==".outcome")]
@@ -177,11 +205,14 @@ ffs <- function (predictors,
       break()
     }
     for (i in 1:length(nextvars)){
-      print(paste0("model using additional variable ",nextvars[i], " will be trained now..." ))
+      if(verbose){
+        print(paste0("model using additional variable ",nextvars[i], " will be trained now..." ))
+      }
       set.seed(seed)
       model <- caret::train(predictors[,c(startvars,nextvars[i])],
                             response,
                             method = method,
+                            metric=metric,
                             trControl = trControl,
                             tuneLength = tuneLength,
                             tuneGrid = tuneGrid)
@@ -201,21 +232,27 @@ ffs <- function (predictors,
       perf_all[acc,1:length(model$finalModel$xNames)] <- model$finalModel$xNames
       perf_all[acc,(length(predictors)+1):ncol(
         perf_all)] <- c(actmodelperf,actmodelperfSE,length(model$finalModel$xNames))
-     print(paste0("maxmimum number of models that still need to be trained: ",
-                  (n-1)^2-acc))
+      if(verbose){
+        print(paste0("maxmimum number of models that still need to be trained: ",
+                     (n-1)^2-acc))
+      }
     }
     selectedvars <- c(selectedvars,names(bestmodel$trainingData)[-which(
       names(bestmodel$trainingData)%in%c(".outcome",selectedvars))])
     selectedvars_SE <- c(selectedvars_SE,bestmodelperfSE)
     if (maximize){
       selectedvars_perf <- c(selectedvars_perf,max(bestmodel$results[,metric]))
-      print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
-                   " with ", metric," ",round(max(bestmodel$results[,metric]),3)))
+      if(verbose){
+        print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
+                     " with ", metric," ",round(max(bestmodel$results[,metric]),3)))
+      }
     }
     if (!maximize){
       selectedvars_perf <- c(selectedvars_perf,min(bestmodel$results[,metric]))
-      print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
-                   " with ",metric," ",round(min(bestmodel$results[,metric]),3)))
+      if(verbose){
+        print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
+                     " with ",metric," ",round(min(bestmodel$results[,metric]),3)))
+      }
     }
   }
   bestmodel$selectedvars <- selectedvars

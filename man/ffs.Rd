@@ -8,7 +8,7 @@ ffs(predictors, response, method = "rf",
   metric = ifelse(is.factor(response), "Accuracy", "RMSE"),
   maximize = ifelse(metric == "RMSE", FALSE, TRUE), withinSE = FALSE,
   trControl = caret::trainControl(), tuneLength = 3, tuneGrid = NULL,
-  seed = sample(1:1000, 1), ...)
+  seed = sample(1:1000, 1), verbose = TRUE, ...)
 }
 \arguments{
 \item{predictors}{see \code{\link{train}}}
@@ -31,6 +31,8 @@ currently best models Standard error}
 \item{tuneGrid}{see \code{\link{train}}}
 
 \item{seed}{A random number used for model training}
+
+\item{verbose}{Logical. Should information about the progress be printed?}
 
 \item{...}{arguments passed to the classification or regression routine
 (such as randomForest). Errors will occur if values for tuning parameters are
@@ -74,25 +76,45 @@ ffsmodel <- ffs(iris[,1:4],iris$Species)
 ffsmodel$selectedvars
 ffsmodel$selectedvars_perf
 }
+
 # or perform model with target-oriented validation (LLO CV)
 #the example is taken from the GSIF package and is described
 #in Gasch et al. (2015). The ffs approach for this dataset is described in
-#Meyer et al. (2018).
-#Due to high computation time needed, only a small and thus not robust example
-#is shown here. Run it in parallel on 3 cores:
+#Meyer et al. (2018). Due to high computation time needed, only a small and thus not robust example
+#is shown here.
+
 \dontrun{
+#run the model on three cores:
 library(doParallel)
 cl <- makeCluster(3)
 registerDoParallel(cl)
 
+#load and prepare dataset:
 dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
-trainDat <- dat[createDataPartition(dat$VW, p = 0.001,list=FALSE),]
-indices <- CreateSpacetimeFolds(trainDat,spacevar = "SOURCEID")
-predictors <- c("DEM","TWI","NDRE.M","Bt","BLD","PHI","Precip_cum","cdayt")
-ffsmodel <- ffs(trainDat[,predictors],trainDat$VW,method="rf",
-trControl=trainControl(method="cv",index=indices$index,indexOut=indices$indexOut),
-tuneLength=1)
+trainDat <- dat[dat$altitude==-0.3&year(dat$Date)==2012&week(dat$Date)\%in\%c(13:14),]
 
+#visualize dataset:
+ggplot(data = trainDat, aes(x=Date, y=VW)) + geom_line(aes(colour=SOURCEID))
+
+#create folds for Leave Location Out Cross Validation:
+set.seed(10)
+indices <- CreateSpacetimeFolds(trainDat,spacevar = "SOURCEID",k=3)
+ctrl <- trainControl(method="cv",index = indices$index)
+
+#define potential predictors:
+predictors <- c("DEM","TWI","BLD","Precip_cum","cday","MaxT_wrcc",
+"Precip_wrcc","NDRE.M","Bt","MinT_wrcc","Northing","Easting")
+
+#run ffs model with Leave Location out CV
+set.seed(10)
+ffsmodel <- ffs(trainDat[,predictors],trainDat$VW,method="rf",
+tuneLength=1,trControl=ctrl)
+ffsmodel
+
+#compare to model without ffs:
+model <- ffs(trainDat[,predictors],trainDat$VW,method="rf",
+tuneLength=1, trControl=ctrl)
+model
 stopCluster(cl)
 }
 }

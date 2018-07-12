@@ -1,7 +1,7 @@
 Package: CAST
 Type: Package
 Title: 'caret' Applications for Spatial-Temporal Models
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: c(person("Hanna", "Meyer", email = "hanna.meyer@geo.uni-marburg.de", role = c("cre", "aut")),
              person("Chris", "Reudenbach", role = c("ctb")),
              person("Marvin", "Ludwig", role = c("ctb")),
@@ -18,9 +18,11 @@ Encoding: UTF-8
 LazyData: true
 Depends: R (>= 3.1.0)
 Imports: caret, stats, utils, ggplot2
-Suggests: doParallel, GSIF, randomForest
+Suggests: doParallel, GSIF, randomForest, lubridate, raster, sp, knitr,
+        mapview, rmarkdown
 RoxygenNote: 6.0.1
+VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2018-05-03 09:13:31 UTC; hanna
+Packaged: 2018-07-12 10:45:23 UTC; hanna
 Repository: CRAN
-Date/Publication: 2018-05-03 09:37:56 UTC
+Date/Publication: 2018-07-12 11:20:03 UTC
