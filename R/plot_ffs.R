@@ -1,4 +1,4 @@
-#' Plot results of a Forward feature selection
+#' Plot results of a Forward feature selection or best subset selection
 #' @description A plotting function for a forward feature selection result.
 #' Each point is the mean performance of a model run. Error bars represent
 #' the standard errors from cross validation.
@@ -12,7 +12,7 @@
 #' @param lwd Numeric. Width of the error bars
 #' @param pch Numeric. Type of point marking the best models
 #' @author Marvin Ludwig and Hanna Meyer
-#' @seealso \code{\link{ffs}}
+#' @seealso \code{\link{ffs}}, \code{\link{bss}}
 #' @examples
 #' \dontrun{
 #' data(iris)
@@ -20,7 +20,7 @@
 #' plot_ffs(ffsmodel)
 #'}
 #' @export plot_ffs
-#' @aliases plot_ffs
+#' @aliases plot_ffs plot_bss
 
 
 plot_ffs <- function(ffs_model,palette=rainbow,reverse=FALSE, marker="black",size=1.5,lwd=0.5,
@@ -29,6 +29,14 @@ plot_ffs <- function(ffs_model,palette=rainbow,reverse=FALSE, marker="black",siz
   output_df <- ffs_model$perf_all
   output_df$run <- seq(nrow(output_df))
   names(output_df)[which(names(output_df)==metric)] <- "value"
+
+  if (is.null(ffs_model$type)){
+    ffs_model$type <- "ffs"
+  }
+  if (ffs_model$type=="bss"){
+    bestmodels <- output_df$run[which(output_df$value==ffs_model$selectedvars_perf)]
+  }else{
+
   bestmodels <- c()
   for (i in unique(output_df$nvar)){
     if (ffs_model$maximize){
@@ -42,6 +50,8 @@ plot_ffs <- function(ffs_model,palette=rainbow,reverse=FALSE, marker="black",siz
     }
   }
   bestmodels <- bestmodels[1:(length(ffs_model$selectedvars)-1)]
+}
+
   if (!reverse){
     cols <- palette(max(output_df$nvar)-1)
   }else{

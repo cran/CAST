@@ -13,8 +13,7 @@
 #' @param seed A random number used for model training
 #' @param verbose Logical. Should information about the progress be printed?
 #' @param ... arguments passed to the classification or regression routine
-#' (such as randomForest). Errors will occur if values for tuning parameters are
-#' passed here.
+#' (such as randomForest).
 #' @return A list of class train. Beside of the usual train content
 #' the object contains the vector "selectedvars" and "selectedvars_perf"
 #' that give the order of the best variables selected as well as their corresponding
@@ -33,14 +32,14 @@
 #' Using withinSE will favour models with less variables and
 #' probably shorten the calculation time
 #'
-#' @note This validation is particulary suitable for
+#' @note This validation is particulary suitable for spatial
 #' leave-location-out cross validations where variable selection
 #' MUST be based on the performance of the model on the hold out station.
 #' See \href{https://doi.org/10.1016/j.envsoft.2017.12.001}{Meyer et al. (2018)}
 #' for further details.
 
 #' @author Hanna Meyer
-#' @seealso \code{\link{train}},
+#' @seealso \code{\link{train}},\code{\link{bss}},
 #' \code{\link{trainControl}},\code{\link{CreateSpacetimeFolds}}
 #' @references
 #' \itemize{
@@ -110,10 +109,18 @@ ffs <- function (predictors,
                  seed = sample(1:1000, 1),
                  verbose=TRUE,
                  ...){
+  trControl$returnResamp <- "final"
+  if(class(response)=="character"){
+    response <- factor(response)
+    if(metric=="RMSE"){
+      metric <- "Accuracy"
+      maximize <- TRUE
+    }
+  }
   if (trControl$method=="LOOCV"){
     if (withinSE==TRUE){
       print("warning: withinSE is set to FALSE as no SE can be calculated using method LOOCV")
-      withinSE = FALSE
+      withinSE <- FALSE
     }}
   se <- function(x){sd(x, na.rm = TRUE)/sqrt(length(na.exclude(x)))}
   n <- length(names(predictors))
@@ -121,8 +128,8 @@ ffs <- function (predictors,
   perf_all <- data.frame(matrix(ncol=length(predictors)+3,nrow=2*(n-1)^2/2))
   names(perf_all) <- c(paste0("var",1:length(predictors)),metric,"SE","nvar")
 
-  if(maximize) evalfunc <- function(x){max(x,na.rm=T)}
-  if(!maximize) evalfunc <- function(x){min(x,na.rm=T)}
+  if(maximize) evalfunc <- function(x){max(x,na.rm=TRUE)}
+  if(!maximize) evalfunc <- function(x){min(x,na.rm=TRUE)}
   isBetter <- function (actmodelperf,bestmodelperf,
                         bestmodelperfSE=NULL,
                         maximization=FALSE,
@@ -143,18 +150,32 @@ ffs <- function (predictors,
       print(paste0("model using ",paste0(twogrid[i,],collapse=","), " will be trained now..." ))
     }
     set.seed(seed)
+    #adaptations for pls:
+    tuneGrid_orig <- tuneGrid
+    if(method=="pls"&!is.null(tuneGrid)&any(tuneGrid$ncomp>2)){
+      tuneGrid <- data.frame(ncomp=tuneGrid[tuneGrid$ncomp<=2,])
+      if(verbose){
+        print("note: maximum ncomp is 2")
+      }
+    }
+    #train model:
     model <- caret::train(predictors[,twogrid[i,]],
                           response,
                           method=method,
                           trControl=trControl,
                           tuneLength = tuneLength,
-                          tuneGrid = tuneGrid)
+                          tuneGrid = tuneGrid,
+                          ...)
+    if(method=="pls"&!is.null(tuneGrid)&any(tuneGrid$ncomp>2)){
+      tuneGrid <- tuneGrid_orig
+    }
+
     ### compare the model with the currently best model
     actmodelperf <- evalfunc(model$results[,names(model$results)==metric])
     actmodelperfSE <- se(
       sapply(unique(model$resample$Resample),
              FUN=function(x){mean(model$resample[model$resample$Resample==x,
-                                                 metric])}))
+                                                 metric],na.rm=TRUE)}))
     if (i == 1){
       bestmodelperf <- actmodelperf
       bestmodelperfSE <- actmodelperfSE
@@ -201,6 +222,8 @@ ffs <- function (predictors,
       bestmodel$selectedvars_perf_SE <- selectedvars_SE[-length(selectedvars_SE)] #!!!
       bestmodel$perf_all <- perf_all
       bestmodel$perf_all <- bestmodel$perf_all[!apply(is.na(bestmodel$perf_all), 1, all),]
+      bestmodel$perf_all <- bestmodel$perf_all[colSums(!is.na(bestmodel$perf_all)) > 0]
+      bestmodel$type <- "ffs"
       return(bestmodel)
       break()
     }
@@ -209,18 +232,28 @@ ffs <- function (predictors,
         print(paste0("model using additional variable ",nextvars[i], " will be trained now..." ))
       }
       set.seed(seed)
+      #adaptation for pls:
+      tuneGrid_orig <- tuneGrid
+      if(method=="pls"&!is.null(tuneGrid)&any(tuneGrid$ncomp>ncol(predictors[,c(startvars,nextvars[i])]))){
+        tuneGrid<- data.frame(ncomp=tuneGrid[tuneGrid$ncomp<=ncol(predictors[,c(startvars,nextvars[i])]),])
+        if(verbose){
+          print(paste0("note: maximum ncomp is ", ncol(predictors[,c(startvars,nextvars[i])])))
+        }}
+
       model <- caret::train(predictors[,c(startvars,nextvars[i])],
                             response,
                             method = method,
                             metric=metric,
                             trControl = trControl,
                             tuneLength = tuneLength,
-                            tuneGrid = tuneGrid)
+                            tuneGrid = tuneGrid,
+                            ...)
+      tuneGrid <- tuneGrid_orig
       actmodelperf <- evalfunc(model$results[,names(model$results)==metric])
       actmodelperfSE <- se(
         sapply(unique(model$resample$Resample),
                FUN=function(x){mean(model$resample[model$resample$Resample==x,
-                                                   metric])}))
+                                                   metric],na.rm=TRUE)}))
       if(isBetter(actmodelperf,bestmodelperf,
                   selectedvars_SE[length(selectedvars_SE)], #SE from model with nvar-1
                   maximization=maximize,withinSE=withinSE)){
@@ -260,5 +293,7 @@ ffs <- function (predictors,
   bestmodel$selectedvars_perf_SE <- selectedvars_SE
   bestmodel$perf_all <- perf_all
   bestmodel$perf_all <- bestmodel$perf_all[!apply(is.na(bestmodel$perf_all), 1, all),]
+  bestmodel$type <- "ffs"
+  bestmodel$perf_all <- bestmodel$perf_all[colSums(!is.na(bestmodel$perf_all)) > 0]
   return(bestmodel)
 }

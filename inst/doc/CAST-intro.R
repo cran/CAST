@@ -34,8 +34,7 @@ ggplot(data = trainDat, aes(x=Date, y=VW)) +
 ## ---- message = FALSE, warning=FALSE-------------------------------------
 library(caret)
 predictors <- c("DEM","BLD","TWI","Precip_cum","cday",
-                "MaxT_wrcc","Precip_wrcc",#"Bt",
-                #"MinT_wrcc",
+                "MaxT_wrcc","Precip_wrcc",
                 "Northing","Easting","NDRE.M")
 set.seed(10)
 model <- train(trainDat[,predictors],trainDat$VW,

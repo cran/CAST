@@ -2,10 +2,11 @@
 % Please edit documentation in R/plot_ffs.R
 \name{plot_ffs}
 \alias{plot_ffs}
-\title{Plot results of a Forward feature selection}
+\alias{plot_bss}
+\title{Plot results of a Forward feature selection or best subset selection}
 \usage{
-plot_ffs(ffs_model, palette = rainbow, reverse = FALSE, marker = "black",
-  size = 1.5, lwd = 0.5, pch = 21)
+plot_ffs(ffs_model, palette = rainbow, reverse = FALSE,
+  marker = "black", size = 1.5, lwd = 0.5, pch = 21)
 }
 \arguments{
 \item{ffs_model}{Result of a forward feature selection see \code{\link{ffs}}}
@@ -37,7 +38,7 @@ plot_ffs(ffsmodel)
 }
 }
 \seealso{
-\code{\link{ffs}}
+\code{\link{ffs}}, \code{\link{bss}}
 }
 \author{
 Marvin Ludwig and Hanna Meyer

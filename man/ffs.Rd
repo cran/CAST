@@ -35,8 +35,7 @@ currently best models Standard error}
 \item{verbose}{Logical. Should information about the progress be printed?}
 
 \item{...}{arguments passed to the classification or regression routine
-(such as randomForest). Errors will occur if values for tuning parameters are
-passed here.}
+(such as randomForest).}
 }
 \value{
 A list of class train. Beside of the usual train content
@@ -63,7 +62,7 @@ Using withinSE will favour models with less variables and
 probably shorten the calculation time
 }
 \note{
-This validation is particulary suitable for
+This validation is particulary suitable for spatial
 leave-location-out cross validations where variable selection
 MUST be based on the performance of the model on the hold out station.
 See \href{https://doi.org/10.1016/j.envsoft.2017.12.001}{Meyer et al. (2018)}
@@ -125,7 +124,7 @@ stopCluster(cl)
 }
 }
 \seealso{
-\code{\link{train}},
+\code{\link{train}},\code{\link{bss}},
 \code{\link{trainControl}},\code{\link{CreateSpacetimeFolds}}
 }
 \author{
