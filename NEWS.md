@@ -1,3 +1,11 @@
+# `CAST` 0.3.1
+
+* bugfix: 
+  * CreateSpaceTimeFolds accepts tibbles
+  * CreateSpaceTimeFolds automatically reduces k if necessary
+  * ffs accepts further arguments taken by caret::train
+* new feature: plot_ffs has option to plot selected variables only
+
 # `CAST` 0.3.0
 
 * new feature: Best subset selection (bss) with target-oriented validation as (very slow but very reliable) alternative to ffs
