@@ -7,8 +7,8 @@
 ffs(predictors, response, method = "rf",
   metric = ifelse(is.factor(response), "Accuracy", "RMSE"),
   maximize = ifelse(metric == "RMSE", FALSE, TRUE), withinSE = FALSE,
-  trControl = caret::trainControl(), tuneLength = 3, tuneGrid = NULL,
-  seed = sample(1:1000, 1), verbose = TRUE, ...)
+  minVar = 2, trControl = caret::trainControl(), tuneLength = 3,
+  tuneGrid = NULL, seed = sample(1:1000, 1), verbose = TRUE, ...)
 }
 \arguments{
 \item{predictors}{see \code{\link{train}}}
@@ -23,6 +23,9 @@ ffs(predictors, response, method = "rf",
 
 \item{withinSE}{Logical Models are only selected if they are better than the
 currently best models Standard error}
+
+\item{minVar}{Numeric. Number of variables to combine for the first selection.
+See Details.}
 
 \item{trControl}{see \code{\link{train}}}
 
@@ -60,12 +63,21 @@ on parallel processing of carets train functions for details.
 
 Using withinSE will favour models with less variables and
 probably shorten the calculation time
+
+Per Default, the ffs starts with all possible 2-pair combinations.
+minVar allows to start the selection with more than 2 variables, e.g.
+minVar=3 starts the ffs testing all combinations of 3 (instead of 2) variables
+first and then increasing the number. This is important for e.g. neural networks
+that often cannot make sense of only two variables. It is also relevant if
+it is assumed that the optimal variables can only be found if more than 2
+are considered at the same time.
 }
 \note{
 This validation is particulary suitable for spatial
 leave-location-out cross validations where variable selection
 MUST be based on the performance of the model on the hold out station.
 See \href{https://doi.org/10.1016/j.envsoft.2017.12.001}{Meyer et al. (2018)}
+and \href{https://doi.org/10.1016/j.ecolmodel.2019.108815}{Meyer et al. (2019)}
 for further details.
 }
 \examples{
@@ -111,7 +123,7 @@ tuneLength=1,trControl=ctrl)
 ffsmodel
 
 #compare to model without ffs:
-model <- ffs(trainDat[,predictors],trainDat$VW,method="rf",
+model <- train(trainDat[,predictors],trainDat$VW,method="rf",
 tuneLength=1, trControl=ctrl)
 model
 stopCluster(cl)
@@ -121,6 +133,7 @@ stopCluster(cl)
 \itemize{
 \item Gasch, C.K., Hengl, T., Gräler, B., Meyer, H., Magney, T., Brown, D.J. (2015): Spatio-temporal interpolation of soil water, temperature, and electrical conductivity in 3D+T: the Cook Agronomy Farm data set. Spatial Statistics 14: 70-90.
 \item Meyer, H., Reudenbach, C., Hengl, T., Katurji, M., Nauß, T. (2018): Improving performance of spatio-temporal machine learning models using forward feature selection and target-oriented validation. Environmental Modelling & Software 101: 1-9.
+\item Meyer, H., Reudenbach, C., Wöllauer, S., Nauss, T. (2019): Importance of spatial predictor variable selection in machine learning applications - Moving from data reproduction to spatial prediction. Ecological Modelling. 411, 108815.
 }
 }
 \seealso{

@@ -1,5 +1,6 @@
 ## ----setup, echo=FALSE---------------------------------------------------
 knitr::opts_chunk$set(fig.width = 8.83)
+user_hanna <- Sys.getenv("USER") %in% c("hanna")
 
 ## ---- message = FALSE, warning=FALSE-------------------------------------
 #install.packages("CAST")
@@ -13,12 +14,16 @@ data <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
 head(data)
 
 ## ---- message = FALSE, warning=FALSE-------------------------------------
-library(mapview)
+
 library(sp)
 data_sp <- unique(data[,c("SOURCEID","Easting","Northing")])
 coordinates(data_sp) <- ~Easting+Northing
 proj4string(data_sp) <- CRS("+init=epsg:26911")
-#plot the data:
+plot(data_sp,axes=T)
+
+## ---- message = FALSE, warning=FALSE, eval=user_hanna--------------------
+#...or plot the data with mapview (recommended!):
+library(mapview)
 mapviewOptions(basemaps = c("Esri.WorldImagery"))
 mapview(data_sp)
 
