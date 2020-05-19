@@ -1,3 +1,9 @@
+# `CAST` 0.4.1
+* new feature:
+  * vignette: tutorial introducing the "area of applicability"
+  * variable threshold for aoa
+  * various modifications in aoa in line with submitted paper
+  
 # `CAST` 0.4.0
 * new feature: 
     * new function "aoa": quantify and visualize the area of applicability of spatial prediction models
