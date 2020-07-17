@@ -1,5 +1,4 @@
 #' Area of Applicability
-#'
 #' @description
 #' This function estimates the Dissimilarity Index (DI) and the derived
 #' Area of Applicability (AOA) of spatial prediction models by
@@ -7,18 +6,19 @@
 #' used in the models) in the predictor variable space to the data used for model
 #' training. Predictors can be weighted in the ideal case based on the internal
 #' variable importance of the machine learning algorithm used for model training.
-#'
-#' @param train a data.frame containing the data used for model training
-#' @param predictors A RasterStack, RasterBrick or data.frame containing the data
+#' @param newdata A RasterStack, RasterBrick or data.frame containing the data
 #' the model was meant to make predictions for.
-#' @param weight A data.frame containing weights for each variable. Only required if no model is given.
 #' @param model A train object created with caret used to extract weights from (based on variable importance) as well as cross-validation folds
+#' @param train a data.frame containing the data used for model training. Only required when no model is given
+#' @param weight A data.frame containing weights for each variable. Only required if no model is given.
 #' @param variables character vector of predictor variables. if "all" then all variables
-#' of the train dataset are used. Check varImp(model).
+#' of the model are used or if no model is given then of the train dataset.
 #' @param thres numeric vector of probability of DI in training data, with values in [0,1].
 #' @param folds Numeric or character. Folds for cross validation. E.g. Spatial cluster affiliation for each data point.
 #' Should be used if replicates are present. Only required if no model is given.
 #' @details The Dissimilarity Index (DI) and the corresponding Area of Applicability (AOA) are calculated.
+#' If variables are factors, dummy variables are created prior to weighting and distance calculation.
+#'
 #' Interpretation of results: If a location is very similar to the properties
 #' of the training data it will have a low distance in the predictor variable space
 #' (DI towards 0) while locations that are very different in their properties
@@ -27,6 +27,7 @@
 #' To calculate the DI in the training data, the minimum distance to an other training point
 #' (if applicable: not located in the same CV fold) is considered.
 #' See Meyer and Pebesma (2020) for the full documentation of the methodology.
+#' @note Note extensively tested with categorical predictors yet!
 #' @return A RasterStack or data.frame with the DI and AOA. AOA has values 0 (outside AOA) and 1 (inside AOA).
 #' @author
 #' Hanna Meyer
@@ -57,48 +58,54 @@
 #' plot(studyArea$DEM)
 #' plot(pts[,1],add=TRUE,col="black")
 #'
-#' # first calculate the DI based on a set of variables with equal weights:
-#' variables <- c("DEM","NDRE.Sd","TWI")
-#' AOA <- aoa(trainDat,studyArea,variables=variables)
-#' spplot(AOA$DI, col.regions=viridis(100),main="Applicability Index")
-#' spplot(AOA$AOA,main="Area of Applicability")
-#'
-#' # or weight variables based on variable improtance from a trained model:
+#' # train a model:
 #' set.seed(100)
+#' variables <- c("DEM","NDRE.Sd","TWI")
 #' model <- train(trainDat[,which(names(trainDat)%in%variables)],
 #' trainDat$VW,method="rf",importance=TRUE,tuneLength=1,trControl=trainControl(method="cv",number=5))
 #' print(model) #note that this is a quite poor prediction model
 #' prediction <- predict(studyArea,model)
 #' plot(varImp(model,scale=FALSE))
-#' #
-#' AOA <- aoa(trainDat,studyArea,model=model,variables=variables)
+#'
+#' #...then calculate the AOA of the trained model for the study area:
+#' AOA <- aoa(studyArea,model)
 #' spplot(AOA$DI, col.regions=viridis(100),main="Applicability Index")
 #' #plot predictions for the AOA only:
 #' spplot(prediction, col.regions=viridis(100),main="prediction for the AOA")+
 #' spplot(AOA$AOA,col.regions=c("grey","transparent"))
+#'
+#' #The AOA can also be calculated without a trained model.
+#' #All variables are weighted equally in this case:
+#' AOA <- aoa(studyArea,train=trainDat,variables=variables)
+#' spplot(AOA$DI, col.regions=viridis(100),main="Applicability Index")
+#' spplot(AOA$AOA,main="Area of Applicability")
 #' }
 #' @export aoa
 #' @aliases aoa
 
-aoa <- function (train,
-                 predictors,
-                 weight=NA,
+aoa <- function (newdata,
                  model=NA,
+                 train=NULL,
+                 weight=NA,
                  variables="all",
                  thres=0.95,
                  folds=NULL){
 
   ### if not specified take all variables from train dataset as default:
+  if(is.null(train)){train <- model$trainingData}
   if(nrow(train)<=1){stop("at least two training points need to be specified")}
-  if(length(variables)==1&&variables=="all"){
-    variables=names(train)
+  if(variables=="all"){
+    if(!is.na(model)[1]){
+    variables <- names(model$trainingData)[-length(names(model$trainingData))]
+    }else{
+      variables <- names(train)
+    }
   }
-
   #### Prepare output as either as RasterLayer or vector:
   out <- NA
-  if (class(predictors)=="RasterStack"|class(predictors)=="RasterBrick"|
-      class(predictors)=="RasterLayer"){
-    out <- predictors[[1]]
+  if (class(newdata)=="RasterStack"|class(newdata)=="RasterBrick"|
+      class(newdata)=="RasterLayer"){
+    out <- newdata[[1]]
   }
 
   #### Extract weights from trained model:
@@ -116,12 +123,14 @@ aoa <- function (train,
   }
 
   #### order data:
-  if (class(predictors)=="RasterStack"|class(predictors)=="RasterBrick"|
-      class(predictors)=="RasterLayer"){
-    predictors <- predictors[[na.omit(match(variables, names(predictors)))]]
-  }else{
-    predictors <- predictors[,na.omit(match(variables, names(predictors)))]
+  if (class(newdata)=="RasterStack"|class(newdata)=="RasterBrick"|
+      class(newdata)=="RasterLayer"){
+    if (any(is.factor(newdata))){
+      newdata[[which(is.factor(newdata))]] <- raster::deratify(newdata[[which(is.factor(newdata))]],complete = TRUE)
+    }
+    newdata <- raster::as.data.frame(newdata)
   }
+  newdata <- newdata[,na.omit(match(variables, names(newdata)))]
   train <- train[,na.omit(match(variables, names(train)))]
   if(!inherits(weight, "error")){
     weight <- weight[,na.omit(match(variables, names(weight)))]
@@ -130,27 +139,52 @@ aoa <- function (train,
       message("negative weights were set to 0")
     }
   }
-
-  #### Scale data and weight predictors if applicable:
+  ##############################################################################
+  ## Handling of categorical predictors:
+  catvars <- tryCatch(names(train)[which(sapply(train[,variables], class)%in%c("factor","character"))], error=function(e) e)
+  if (!inherits(catvars,"error")&length(catvars)>0){
+    for (catvar in catvars){
+      # mask all unknown levels in newdata as NA (even technically no predictions can be made)
+      train[,catvar]<-droplevels(train[,catvar])
+      newdata[,catvar] <- factor(newdata[,catvar])
+      newdata[!newdata[,catvar]%in%unique(train[,catvar]),catvar] <- NA
+      newdata[,catvar] <- droplevels(newdata[,catvar])
+      # then create dummy variables for the remaining levels in train:
+      dvi_train <- predict(caret::dummyVars(paste0("~",catvar), data = train),train)
+      dvi_newdata <- predict(caret::dummyVars(paste0("~",catvar), data=train),newdata)
+      dvi_newdata[is.na(newdata[,catvar]),] <- 0
+      train <- data.frame(train,dvi_train)
+      newdata <- data.frame(newdata,dvi_newdata)
+      if(!inherits(weight, "error")){
+        addweights <- data.frame(t(rep(weight[,which(names(weight)==catvar)],
+                                       ncol(dvi_train))))
+        names(addweights)<- colnames(dvi_train)
+        weight <- data.frame(weight,addweights)
+      }
+    }
+    if(!inherits(weight, "error")){
+      weight <- weight[,-which(names(weight)%in%catvars)]
+    }
+    newdata <- newdata[,-which(names(newdata)%in%catvars)]
+    train <- train[,-which(names(train)%in%catvars)]
+  }
+  ##############################################################################
+  #### Scale data and weight data if applicable:
   train <- scale(train)
   scaleparam <- attributes(train)
   if(!inherits(weight, "error")){
     train <- sapply(1:ncol(train),function(x){train[,x]*unlist(weight[x])})
   }
-  if (class(predictors)=="RasterStack"|class(predictors)=="RasterBrick"|
-      class(predictors)=="RasterLayer"){
-    predictors <- raster::as.data.frame(predictors)
-  }
-  predictors <- scale(predictors,center=scaleparam$`scaled:center`,#scaleparam$`scaled:center`
+  newdata <- scale(newdata,center=scaleparam$`scaled:center`,#scaleparam$`scaled:center`
                       scale=scaleparam$`scaled:scale`)
 
   if(!inherits(weight, "error")){
-    predictors <- sapply(1:ncol(predictors),function(x){predictors[,x]*unlist(weight[x])})
+    newdata <- sapply(1:ncol(newdata),function(x){newdata[,x]*unlist(weight[x])})
   }
 
   #### For each pixel caclculate distance to each training point and search for
   #### min distance:
-  mindist <- apply(predictors,1,FUN=function(x){
+  mindist <- apply(newdata,1,FUN=function(x){
     if(any(is.na(x))){
       return(NA)
     }else{
@@ -160,8 +194,8 @@ aoa <- function (train,
   })
 
   trainDist <- as.matrix(dist(train))
-# trainDist <- apply(train,1,FUN=function(x){
-# FNN::knnx.dist(t(matrix(x)),train,k=1)})
+  # trainDist <- apply(train,1,FUN=function(x){
+  # FNN::knnx.dist(t(matrix(x)),train,k=1)})
 
   diag(trainDist) <- NA
 
@@ -179,7 +213,7 @@ aoa <- function (train,
     CVfolds <- tryCatch(reshape::melt(model$control$indexOut),
                         error=function(e) e)
     if(!inherits(CVfolds, "error")){
-      if (nrow(CVfolds)>nrow(trainDist)){
+      if (nrow(CVfolds)>nrow(trainDist)||nrow(CVfolds)<nrow(trainDist)){
         message("note: Either no model was given or no CV was used for model training. The DI threshold is therefore based on all training data")
       }else{
         CVfolds <- CVfolds[order(CVfolds$value),]
@@ -210,8 +244,6 @@ aoa <- function (train,
     raster::values(masked_result) <- 1
     masked_result[out>thres] <- 0
     masked_result <- raster::mask(masked_result,out)
-    #masked_result <- raster::ratify(masked_result)
-    #levels(masked_result) <- data.frame("ID"=c(0,1),levels=c("notAOA","AOA"))
     out <- raster::stack(out,masked_result)
   }else{
     out <- mindist

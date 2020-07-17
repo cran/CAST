@@ -48,7 +48,7 @@
 #' See \href{https://doi.org/10.1016/j.envsoft.2017.12.001}{Meyer et al. (2018)}
 #' and \href{https://doi.org/10.1016/j.ecolmodel.2019.108815}{Meyer et al. (2019)}
 #' for further details.
-
+#'
 #' @author Hanna Meyer
 #' @seealso \code{\link{train}},\code{\link{bss}},
 #' \code{\link{trainControl}},\code{\link{CreateSpacetimeFolds}}
@@ -137,12 +137,11 @@ ffs <- function (predictors,
     }}
   se <- function(x){sd(x, na.rm = TRUE)/sqrt(length(na.exclude(x)))}
   n <- length(names(predictors))
+
   acc <- 0
   perf_all <- data.frame(matrix(ncol=length(predictors)+3,
-                                nrow=factorial(n) / (factorial(n-minVar)* factorial(minVar))+
-                                  (n-minVar)*(n-minVar+1)/2))
+                                nrow=choose(n, minVar)+(n-minVar)*(n-minVar+1)/2))
   names(perf_all) <- c(paste0("var",1:length(predictors)),metric,"SE","nvar")
-
   if(maximize) evalfunc <- function(x){max(x,na.rm=TRUE)}
   if(!maximize) evalfunc <- function(x){min(x,na.rm=TRUE)}
   isBetter <- function (actmodelperf,bestmodelperf,
@@ -177,6 +176,7 @@ ffs <- function (predictors,
     model <- caret::train(predictors[,minGrid[i,]],
                           response,
                           method=method,
+                          metric=metric,
                           trControl=trControl,
                           tuneLength = tuneLength,
                           tuneGrid = tuneGrid,
@@ -204,19 +204,12 @@ ffs <- function (predictors,
     }
     acc <- acc+1
 
-    #   variablenames <- tryCatch({
-    #      model$finalModel$xNames
-    #   }, error=function(e)
-    #      names(model$finalModel@scaling$x.scale[[1]]))
-
     variablenames <- names(model$trainingData)[-length(names(model$trainingData))]
-
     perf_all[acc,1:length(variablenames)] <- variablenames
     perf_all[acc,(length(predictors)+1):ncol(perf_all)] <- c(actmodelperf,actmodelperfSE,length(variablenames))
     if(verbose){
       print(paste0("maximum number of models that still need to be trained: ",
-                   round(factorial(n) / (factorial(n-minVar)* factorial(minVar))+
-                           (n-minVar)*(n-minVar+1)/2-acc,0)))
+                   round(choose(n, minVar)+(n-minVar)*(n-minVar+1)/2-acc,0)))
     }
   }
   #### increase the number of predictors by one (try all combinations)
@@ -288,20 +281,13 @@ ffs <- function (predictors,
       }
       acc <- acc+1
 
-      #      variablenames <- tryCatch({
-      #        model$finalModel$xNames
-      #      }, error=function(e)
-      #        names(model$finalModel@scaling$x.scale[[1]]))
-
       variablenames <- names(model$trainingData)[-length(names(model$trainingData))]
-
       perf_all[acc,1:length(variablenames)] <- variablenames
       perf_all[acc,(length(predictors)+1):ncol(
         perf_all)] <- c(actmodelperf,actmodelperfSE,length(variablenames))
       if(verbose){
         print(paste0("maximum number of models that still need to be trained: ",
-                     round(factorial(n) / (factorial(n-minVar)* factorial(minVar))+
-                             (n-minVar)*(n-minVar+1)/2-acc,0)))
+                     round(choose(n, minVar)+(n-minVar)*(n-minVar+1)/2-acc,0)))
       }
     }
     selectedvars <- c(selectedvars,names(bestmodel$trainingData)[-which(

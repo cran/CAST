@@ -4,21 +4,28 @@
 \alias{aoa}
 \title{Area of Applicability}
 \usage{
-aoa(train, predictors, weight = NA, model = NA, variables = "all",
-  thres = 0.95, folds = NULL)
+aoa(
+  newdata,
+  model = NA,
+  train = NULL,
+  weight = NA,
+  variables = "all",
+  thres = 0.95,
+  folds = NULL
+)
 }
 \arguments{
-\item{train}{a data.frame containing the data used for model training}
-
-\item{predictors}{A RasterStack, RasterBrick or data.frame containing the data
+\item{newdata}{A RasterStack, RasterBrick or data.frame containing the data
 the model was meant to make predictions for.}
-
-\item{weight}{A data.frame containing weights for each variable. Only required if no model is given.}
 
 \item{model}{A train object created with caret used to extract weights from (based on variable importance) as well as cross-validation folds}
 
+\item{train}{a data.frame containing the data used for model training. Only required when no model is given}
+
+\item{weight}{A data.frame containing weights for each variable. Only required if no model is given.}
+
 \item{variables}{character vector of predictor variables. if "all" then all variables
-of the train dataset are used. Check varImp(model).}
+of the model are used or if no model is given then of the train dataset.}
 
 \item{thres}{numeric vector of probability of DI in training data, with values in [0,1].}
 
@@ -38,6 +45,8 @@ variable importance of the machine learning algorithm used for model training.
 }
 \details{
 The Dissimilarity Index (DI) and the corresponding Area of Applicability (AOA) are calculated.
+If variables are factors, dummy variables are created prior to weighting and distance calculation.
+
 Interpretation of results: If a location is very similar to the properties
 of the training data it will have a low distance in the predictor variable space
 (DI towards 0) while locations that are very different in their properties
@@ -46,6 +55,9 @@ To get the AOA, a threshold to the DI is applied based on the DI in the training
 To calculate the DI in the training data, the minimum distance to an other training point
 (if applicable: not located in the same CV fold) is considered.
 See Meyer and Pebesma (2020) for the full documentation of the methodology.
+}
+\note{
+Note extensively tested with categorical predictors yet!
 }
 \examples{
 \dontrun{
@@ -71,25 +83,27 @@ spplot(scale(studyArea))
 plot(studyArea$DEM)
 plot(pts[,1],add=TRUE,col="black")
 
-# first calculate the DI based on a set of variables with equal weights:
-variables <- c("DEM","NDRE.Sd","TWI")
-AOA <- aoa(trainDat,studyArea,variables=variables)
-spplot(AOA$DI, col.regions=viridis(100),main="Applicability Index")
-spplot(AOA$AOA,main="Area of Applicability")
-
-# or weight variables based on variable improtance from a trained model:
+# train a model:
 set.seed(100)
+variables <- c("DEM","NDRE.Sd","TWI")
 model <- train(trainDat[,which(names(trainDat)\%in\%variables)],
 trainDat$VW,method="rf",importance=TRUE,tuneLength=1,trControl=trainControl(method="cv",number=5))
 print(model) #note that this is a quite poor prediction model
 prediction <- predict(studyArea,model)
 plot(varImp(model,scale=FALSE))
-#
-AOA <- aoa(trainDat,studyArea,model=model,variables=variables)
+
+#...then calculate the AOA of the trained model for the study area:
+AOA <- aoa(studyArea,model)
 spplot(AOA$DI, col.regions=viridis(100),main="Applicability Index")
 #plot predictions for the AOA only:
 spplot(prediction, col.regions=viridis(100),main="prediction for the AOA")+
 spplot(AOA$AOA,col.regions=c("grey","transparent"))
+
+#The AOA can also be calculated without a trained model.
+#All variables are weighted equally in this case:
+AOA <- aoa(studyArea,train=trainDat,variables=variables)
+spplot(AOA$DI, col.regions=viridis(100),main="Applicability Index")
+spplot(AOA$AOA,main="Area of Applicability")
 }
 }
 \references{

@@ -1,3 +1,12 @@
+# `CAST` 0.4.2
+* new feature:
+  * aoa now working with categorical variables
+* bugfix:
+  * fixed error in ffs when >170 variables are used
+* minor changes:
+  * changed order of parameters in aoa
+  * tutorial "Introduction to CAST" improved
+
 # `CAST` 0.4.1
 * new feature:
   * vignette: tutorial introducing the "area of applicability"
