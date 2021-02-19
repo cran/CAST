@@ -1,3 +1,12 @@
+# `CAST` 0.5.0
+* new feature: 
+  * AOA can run in parallel
+  * calibration of the DI (calibrate_aoa)
+* bugfix:
+  * aoa will work now with large training sets
+* modifications:
+  * default threshold of AOA changed
+
 # `CAST` 0.4.2
 * new feature:
   * aoa now working with categorical variables

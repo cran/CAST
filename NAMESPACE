@@ -3,6 +3,7 @@
 export(CreateSpacetimeFolds)
 export(aoa)
 export(bss)
+export(calibrate_aoa)
 export(ffs)
 export(plot_ffs)
 import(caret)

@@ -7,11 +7,12 @@
 aoa(
   newdata,
   model = NA,
+  cl = NULL,
   train = NULL,
   weight = NA,
   variables = "all",
-  thres = 0.95,
-  folds = NULL
+  folds = NULL,
+  returnTrainDI = TRUE
 )
 }
 \arguments{
@@ -20,28 +21,33 @@ the model was meant to make predictions for.}
 
 \item{model}{A train object created with caret used to extract weights from (based on variable importance) as well as cross-validation folds}
 
-\item{train}{a data.frame containing the data used for model training. Only required when no model is given}
+\item{cl}{A cluster object e.g. created with doParallel. Should only be used if newdata is large.}
+
+\item{train}{A data.frame containing the data used for model training. Only required when no model is given}
 
 \item{weight}{A data.frame containing weights for each variable. Only required if no model is given.}
 
 \item{variables}{character vector of predictor variables. if "all" then all variables
 of the model are used or if no model is given then of the train dataset.}
 
-\item{thres}{numeric vector of probability of DI in training data, with values in [0,1].}
-
 \item{folds}{Numeric or character. Folds for cross validation. E.g. Spatial cluster affiliation for each data point.
 Should be used if replicates are present. Only required if no model is given.}
+
+\item{returnTrainDI}{A logical: should the DI value of the cross-validated training data be returned as a attribute?}
 }
 \value{
-A RasterStack or data.frame with the DI and AOA. AOA has values 0 (outside AOA) and 1 (inside AOA).
+A RasterStack or data.frame with the DI and AOA
+AOA has values 0 (outside AOA) and 1 (inside AOA).
 }
 \description{
 This function estimates the Dissimilarity Index (DI) and the derived
 Area of Applicability (AOA) of spatial prediction models by
 considering the distance of new data (i.e. a Raster Stack of spatial predictors
 used in the models) in the predictor variable space to the data used for model
-training. Predictors can be weighted in the ideal case based on the internal
+training. Predictors can be weighted based on the internal
 variable importance of the machine learning algorithm used for model training.
+The AOA is derived by applying a threshold on the DI which is the (outlier-removed)
+maximum DI of the cross-validated training data.
 }
 \details{
 The Dissimilarity Index (DI) and the corresponding Area of Applicability (AOA) are calculated.
@@ -51,13 +57,12 @@ Interpretation of results: If a location is very similar to the properties
 of the training data it will have a low distance in the predictor variable space
 (DI towards 0) while locations that are very different in their properties
 will have a high DI.
-To get the AOA, a threshold to the DI is applied based on the DI in the training data.
-To calculate the DI in the training data, the minimum distance to an other training point
-(if applicable: not located in the same CV fold) is considered.
 See Meyer and Pebesma (2020) for the full documentation of the methodology.
 }
 \note{
-Note extensively tested with categorical predictors yet!
+If classification models are used, currently the variable importance can only
+be automatically retrieved if models were traiend via train(predictors,response) and not via the formula-interface.
+Will be fixed.
 }
 \examples{
 \dontrun{
@@ -87,22 +92,34 @@ plot(pts[,1],add=TRUE,col="black")
 set.seed(100)
 variables <- c("DEM","NDRE.Sd","TWI")
 model <- train(trainDat[,which(names(trainDat)\%in\%variables)],
-trainDat$VW,method="rf",importance=TRUE,tuneLength=1,trControl=trainControl(method="cv",number=5))
+trainDat$VW, method="rf", importance=TRUE, tuneLength=1,
+trControl=trainControl(method="cv",number=5,savePredictions=T))
 print(model) #note that this is a quite poor prediction model
 prediction <- predict(studyArea,model)
 plot(varImp(model,scale=FALSE))
 
 #...then calculate the AOA of the trained model for the study area:
 AOA <- aoa(studyArea,model)
-spplot(AOA$DI, col.regions=viridis(100),main="Applicability Index")
+spplot(AOA$DI, col.regions=viridis(100),main="Dissimilarity Index")
 #plot predictions for the AOA only:
 spplot(prediction, col.regions=viridis(100),main="prediction for the AOA")+
 spplot(AOA$AOA,col.regions=c("grey","transparent"))
 
+####
+# Calculating the AOA might be time consuming. Consider running it in parallel:
+####
+library(doParallel)
+library(parallel)
+cl <- makeCluster(4)
+registerDoParallel(cl)
+AOA <- aoa(studyArea,model,cl=cl)
+
+####
 #The AOA can also be calculated without a trained model.
 #All variables are weighted equally in this case:
+####
 AOA <- aoa(studyArea,train=trainDat,variables=variables)
-spplot(AOA$DI, col.regions=viridis(100),main="Applicability Index")
+spplot(AOA$DI, col.regions=viridis(100),main="Dissimilarity Index")
 spplot(AOA$AOA,main="Area of Applicability")
 }
 }
@@ -110,6 +127,9 @@ spplot(AOA$AOA,main="Area of Applicability")
 Meyer, H., Pebesma, E. (2020): Predicting into unknown space?
 Estimating the area of applicability of spatial prediction models.
 \url{https://arxiv.org/abs/2005.07939}
+}
+\seealso{
+\code{\link{calibrate_aoa}}
 }
 \author{
 Hanna Meyer

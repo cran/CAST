@@ -1,5 +1,5 @@
 ## ----setup, echo=FALSE--------------------------------------------------------
-knitr::opts_chunk$set(fig.width = 8.83)
+knitr::opts_chunk$set(fig.width = 8.83,cache = TRUE)
 user_hanna <- Sys.getenv("USER") %in% c("hanna")
 
 ## ---- message = FALSE, warning=FALSE------------------------------------------

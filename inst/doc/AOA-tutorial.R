@@ -146,6 +146,12 @@ RMSE(values(prediction_random)[values(AOA_random$AOA)==1],values(response)[value
 RMSE(values(prediction_random)[values(AOA_random$AOA)==0],values(response)[values(AOA_random$AOA)==1])
 model_random$results
 
+## ----message = FALSE, warning=FALSE-------------------------------------------
+AOA_calib <- calibrate_aoa(AOA_spatial,model,window.size = 5,length.out = 5, multiCV=TRUE,showPlot=FALSE)
+AOA_calib$plot
+spplot(AOA_calib$AOA$expected_RMSE,col.regions=viridis(100),main="expected RMSE")+
+ spplot(AOA$AOA,col.regions=c("grey","transparent"))
+
 ## ---- message = FALSE, warning=FALSE------------------------------------------
 dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
 # calculate average of VW for each sampling site:
