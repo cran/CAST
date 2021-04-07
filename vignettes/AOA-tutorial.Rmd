@@ -280,7 +280,7 @@ spplot(AOA_calib$AOA$expected_RMSE,col.regions=viridis(100),main="expected RMSE"
 The example above used simulated data so that it allows to analyze the reliability of the AOA. However, a simulated area-wide response is not available in usual prediction tasks. Therefore, as a second example the AOA is estimated for a dataset that has point observations as a reference only.
 
 ## Data and preprocessing
-To do so, we will work with the cookfarm dataset, described in e.g. [Gasch et al 2015](https://www.sciencedirect.com/science/article/pii/S2211675315000251/) and available via the GSIF package ([Hengl 2017](https://CRAN.R-project.org/package=GSIF/)). The dataset included in CAST is a re-structured dataset. Find more details also in the vignette "Introduction to CAST".
+To do so, we will work with the cookfarm dataset, described in e.g. [Gasch et al 2015](https://www.sciencedirect.com/science/article/pii/S2211675315000251/). The dataset included in CAST is a re-structured dataset. Find more details also in the vignette "Introduction to CAST".
 We will use soil moisture (VW) as response variable here. Hence, we're aiming at making a spatial continuous prediction based on limited measurements from data loggers.
 
 ```{r, message = FALSE, warning=FALSE}
