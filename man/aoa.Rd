@@ -7,37 +7,41 @@
 aoa(
   newdata,
   model = NA,
+  trainDI = NA,
   cl = NULL,
   train = NULL,
   weight = NA,
   variables = "all",
-  folds = NULL,
-  returnTrainDI = TRUE
+  folds = NULL
 )
 }
 \arguments{
-\item{newdata}{A RasterStack, RasterBrick or data.frame containing the data
+\item{newdata}{A RasterStack, RasterBrick, stars object, SpatRaster or data.frame containing the data
 the model was meant to make predictions for.}
 
-\item{model}{A train object created with caret used to extract weights from (based on variable importance) as well as cross-validation folds}
+\item{model}{A train object created with caret used to extract weights from (based on variable importance) as well as cross-validation folds.
+See examples for the case that no model is available or for models trained via e.g. mlr3.}
 
-\item{cl}{A cluster object e.g. created with doParallel. Should only be used if newdata is large.}
+\item{trainDI}{A trainDI object. Optional if \code{\link{trainDI}} was calculated beforehand.}
 
-\item{train}{A data.frame containing the data used for model training. Only required when no model is given}
+\item{cl}{A cluster object e.g. created with doParallel. Optional. Should only be used if newdata is large.}
 
-\item{weight}{A data.frame containing weights for each variable. Only required if no model is given.}
+\item{train}{A data.frame containing the data used for model training. Optional. Only required when no model is given}
+
+\item{weight}{A data.frame containing weights for each variable. Optional. Only required if no model is given.}
 
 \item{variables}{character vector of predictor variables. if "all" then all variables
 of the model are used or if no model is given then of the train dataset.}
 
-\item{folds}{Numeric or character. Folds for cross validation. E.g. Spatial cluster affiliation for each data point.
+\item{folds}{Numeric or character. Optional. Folds for cross validation. E.g. Spatial cluster affiliation for each data point.
 Should be used if replicates are present. Only required if no model is given.}
-
-\item{returnTrainDI}{A logical: should the DI value of the cross-validated training data be returned as a attribute?}
 }
 \value{
-A RasterStack or data.frame with the DI and AOA
-AOA has values 0 (outside AOA) and 1 (inside AOA).
+An object of class \code{aoa} containing:
+ \item{parameters}{object of class trainDI. see \code{\link{trainDI}}}
+ \item{DI}{raster or data frame. Dissimilarity index of newdata}
+ \item{AOA}{raster or data frame. Area of Applicability of newdata.
+  AOA has values 0 (outside AOA) and 1 (inside AOA)}
 }
 \description{
 This function estimates the Dissimilarity Index (DI) and the derived
@@ -57,11 +61,11 @@ Interpretation of results: If a location is very similar to the properties
 of the training data it will have a low distance in the predictor variable space
 (DI towards 0) while locations that are very different in their properties
 will have a high DI.
-See Meyer and Pebesma (2020) for the full documentation of the methodology.
+See Meyer and Pebesma (2021) for the full documentation of the methodology.
 }
 \note{
 If classification models are used, currently the variable importance can only
-be automatically retrieved if models were traiend via train(predictors,response) and not via the formula-interface.
+be automatically retrieved if models were trained via train(predictors,response) and not via the formula-interface.
 Will be fixed.
 }
 \examples{
@@ -100,6 +104,7 @@ plot(varImp(model,scale=FALSE))
 
 #...then calculate the AOA of the trained model for the study area:
 AOA <- aoa(studyArea,model)
+plot(AOA)
 spplot(AOA$DI, col.regions=viridis(100),main="Dissimilarity Index")
 #plot predictions for the AOA only:
 spplot(prediction, col.regions=viridis(100),main="prediction for the AOA")+
@@ -121,15 +126,47 @@ AOA <- aoa(studyArea,model,cl=cl)
 AOA <- aoa(studyArea,train=trainDat,variables=variables)
 spplot(AOA$DI, col.regions=viridis(100),main="Dissimilarity Index")
 spplot(AOA$AOA,main="Area of Applicability")
+
+
+####
+# The AOA can also be used for models trained via mlr3 (parameters have to be assigned manually):
+####
+
+library(mlr3)
+library(mlr3learners)
+library(mlr3spatial)
+library(mlr3spatiotempcv)
+library(mlr3extralearners)
+
+# initiate and train model:
+train_df <- trainDat[, c("DEM","NDRE.Sd","TWI", "VW")]
+backend <- as_data_backend(train_df)
+task <- as_task_regr(backend, target = "VW")
+lrn <- lrn("regr.randomForest", importance = "mse")
+lrn$train(task)
+
+# cross-validation folds
+rsmp_cv <- rsmp("cv", folds = 5L)$instantiate(task)
+
+## predict:
+prediction <- predict(studyArea,lrn$model)
+
+### Estimate AOA
+AOA <- aoa(studyArea,
+           train = as.data.frame(task$data()),
+           variables = task$feature_names,
+           weight = data.frame(t(lrn$importance())),
+           folds = rsmp_cv$instance[order(row_id)]$fold)
+
 }
 }
 \references{
-Meyer, H., Pebesma, E. (2020): Predicting into unknown space?
+Meyer, H., Pebesma, E. (2021): Predicting into unknown space?
 Estimating the area of applicability of spatial prediction models.
-\url{https://arxiv.org/abs/2005.07939}
+Methods in Ecology and Evolution 12: 1620-1633. \doi{10.1111/2041-210X.13650}
 }
 \seealso{
-\code{\link{calibrate_aoa}}
+\code{\link{calibrate_aoa}}, \code{\link{trainDI}}
 }
 \author{
 Hanna Meyer

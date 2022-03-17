@@ -59,7 +59,12 @@ spplot(stack(prediction,response),main=c("prediction","reference"))
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 AOA <- aoa(predictors, model)
-attributes(AOA)$aoa_stats
+class(AOA)
+names(AOA)
+print(AOA)
+
+## ----message = FALSE, warning=FALSE-------------------------------------------
+plot(AOA)
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 grid.arrange(
@@ -134,6 +139,10 @@ grid.arrange(spplot(AOA_spatial$DI,col.regions=viridis(100),main="DI"),
   spplot(prediction_random, col.regions=viridis(100),main="prediction for AOA \n(random CV error applies)")+
          spplot(AOA_random$AOA,col.regions=c("grey","transparent")),
 ncol=3)
+
+## ---- message = FALSE, warning=FALSE------------------------------------------
+grid.arrange(plot(AOA_spatial) + ggplot2::ggtitle("Spatial CV"),
+             plot(AOA_random) + ggplot2::ggtitle("Random CV"), ncol = 2)
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 ###for the spatial CV:

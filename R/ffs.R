@@ -5,6 +5,7 @@
 #' @param method see \code{\link{train}}
 #' @param metric see \code{\link{train}}
 #' @param maximize see \code{\link{train}}
+#' @param globalval Logical. Should models be evaluated based on 'global' performance? See \code{\link{global_validation}}
 #' @param withinSE Logical Models are only selected if they are better than the
 #' currently best models Standard error
 #' @param minVar Numeric. Number of variables to combine for the first selection.
@@ -42,9 +43,9 @@
 #' it is assumed that the optimal variables can only be found if more than 2
 #' are considered at the same time.
 #'
-#' @note This validation is particulary suitable for spatial
-#' leave-location-out cross validations where variable selection
-#' MUST be based on the performance of the model on the hold out station.
+#' @note This variable selection is particularly suitable for spatial
+#' cross validations where variable selection
+#' MUST be based on the performance of the model for predicting new spatial units.
 #' See Meyer et al. (2018) and Meyer et al. (2019) for further details.
 #'
 #' @author Hanna Meyer
@@ -111,6 +112,7 @@ ffs <- function (predictors,
                  method = "rf",
                  metric = ifelse(is.factor(response), "Accuracy", "RMSE"),
                  maximize = ifelse(metric == "RMSE", FALSE, TRUE),
+                 globalval=FALSE,
                  withinSE = FALSE,
                  minVar = 2,
                  trControl = caret::trainControl(),
@@ -120,7 +122,8 @@ ffs <- function (predictors,
                  verbose=TRUE,
                  ...){
   trControl$returnResamp <- "final"
-  if(class(response)=="character"){
+  trControl$savePredictions <- "final"
+  if(inherits(response,"character")){
     response <- factor(response)
     if(metric=="RMSE"){
       metric <- "Accuracy"
@@ -132,6 +135,13 @@ ffs <- function (predictors,
       print("warning: withinSE is set to FALSE as no SE can be calculated using method LOOCV")
       withinSE <- FALSE
     }}
+
+  if(globalval){
+    if (withinSE==TRUE){
+      print("warning: withinSE is set to FALSE as no SE can be calculated using global validation")
+      withinSE <- FALSE
+    }}
+
   se <- function(x){sd(x, na.rm = TRUE)/sqrt(length(na.exclude(x)))}
   n <- length(names(predictors))
 
@@ -169,6 +179,14 @@ ffs <- function (predictors,
         print(paste0("note: maximum ncomp is ", minVar))
       }
     }
+    #adaptations for tuning of ranger:
+    if(method=="ranger"&!is.null(tuneGrid)&any(tuneGrid$mtry>minVar)){
+      tuneGrid$mtry <- minVar
+      if(verbose){
+        print("invalid value for mtry. Reset to valid range.")
+      }
+    }
+
     #train model:
     model <- caret::train(predictors[,minGrid[i,]],
                           response,
@@ -178,12 +196,16 @@ ffs <- function (predictors,
                           tuneLength = tuneLength,
                           tuneGrid = tuneGrid,
                           ...)
-    if(method=="pls"&!is.null(tuneGrid)&any(tuneGrid$ncomp>minVar)){
-      tuneGrid <- tuneGrid_orig
-    }
+
+    tuneGrid <- tuneGrid_orig
 
     ### compare the model with the currently best model
-    actmodelperf <- evalfunc(model$results[,names(model$results)==metric])
+    if (globalval){
+      perf_stats <- global_validation(model)[names(global_validation(model))==metric]
+    }else{
+      perf_stats <- model$results[,names(model$results)==metric]
+    }
+    actmodelperf <- evalfunc(perf_stats)
     actmodelperfSE <- se(
       sapply(unique(model$resample$Resample),
              FUN=function(x){mean(model$resample[model$resample$Resample==x,
@@ -213,10 +235,16 @@ ffs <- function (predictors,
   #and test if model performance increases
   selectedvars <- names(bestmodel$trainingData)[-which(
     names(bestmodel$trainingData)==".outcome")]
-  if (maximize){
-    selectedvars_perf <- max(bestmodel$results[,metric])
-  } else{
-    selectedvars_perf <- min(bestmodel$results[,metric])
+
+
+  if (globalval){
+    selectedvars_perf <- global_validation(bestmodel)[names(global_validation(bestmodel))==metric]
+  }else{
+    if (maximize){
+      selectedvars_perf <-max(bestmodel$results[,metric])
+    }else{
+      selectedvars_perf <- min(bestmodel$results[,metric])
+    }
   }
   selectedvars_SE <- bestmodelperfSE
   if(verbose){
@@ -247,6 +275,7 @@ ffs <- function (predictors,
         print(paste0("model using additional variable ",nextvars[i], " will be trained now..." ))
       }
       set.seed(seed)
+
       #adaptation for pls:
       tuneGrid_orig <- tuneGrid
       if(method=="pls"&!is.null(tuneGrid)&any(tuneGrid$ncomp>ncol(predictors[,c(startvars,nextvars[i])]))){
@@ -254,6 +283,15 @@ ffs <- function (predictors,
         if(verbose){
           print(paste0("note: maximum ncomp is ", ncol(predictors[,c(startvars,nextvars[i])])))
         }}
+      #adaptation for ranger:
+      if(method=="ranger"&!is.null(tuneGrid)&any(tuneGrid$mtry>ncol(predictors[,c(startvars,nextvars[i])]))){
+        tuneGrid$mtry[tuneGrid$mtry>ncol(predictors[,c(startvars,nextvars[i])])] <- ncol(predictors[,c(startvars,nextvars[i])])
+        if(verbose){
+          print("invalid value for mtry. Reset to valid range.")
+        }
+      }
+
+
 
       model <- caret::train(predictors[,c(startvars,nextvars[i])],
                             response,
@@ -264,7 +302,14 @@ ffs <- function (predictors,
                             tuneGrid = tuneGrid,
                             ...)
       tuneGrid <- tuneGrid_orig
-      actmodelperf <- evalfunc(model$results[,names(model$results)==metric])
+
+      if (globalval){
+        perf_stats <- global_validation(model)[names(global_validation(model))==metric]
+      }else{
+        perf_stats <- model$results[,names(model$results)==metric]
+      }
+      actmodelperf <- evalfunc(perf_stats)
+
       actmodelperfSE <- se(
         sapply(unique(model$resample$Resample),
                FUN=function(x){mean(model$resample[model$resample$Resample==x,
@@ -290,24 +335,52 @@ ffs <- function (predictors,
     selectedvars <- c(selectedvars,names(bestmodel$trainingData)[-which(
       names(bestmodel$trainingData)%in%c(".outcome",selectedvars))])
     selectedvars_SE <- c(selectedvars_SE,bestmodelperfSE)
+
+
+
+
     if (maximize){
-      selectedvars_perf <- c(selectedvars_perf,max(bestmodel$results[,metric]))
-      if(verbose){
-        print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
-                     " with ", metric," ",round(max(bestmodel$results[,metric]),3)))
+      if(globalval){
+        selectedvars_perf <- c(selectedvars_perf,global_validation(bestmodel)[names(global_validation(bestmodel))==metric])
+      }else{
+        selectedvars_perf <- c(selectedvars_perf,max(bestmodel$results[,metric]))
       }
     }
     if (!maximize){
-      selectedvars_perf <- c(selectedvars_perf,min(bestmodel$results[,metric]))
-      if(verbose){
-        print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
-                     " with ",metric," ",round(min(bestmodel$results[,metric]),3)))
+      if(globalval){
+        selectedvars_perf <- c(selectedvars_perf,global_validation(bestmodel)[names(global_validation(bestmodel))==metric])
+      }else{
+        selectedvars_perf <- c(selectedvars_perf,min(bestmodel$results[,metric]))
       }
     }
+    if(verbose){
+      print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
+                   " with ",metric," ",round(selectedvars_perf[length(selectedvars_perf)],3)))
+    }
   }
+
+  # Old version that is not using global_validation:
+  #    if (maximize){
+  #      selectedvars_perf <- c(selectedvars_perf,max(bestmodel$results[,metric]))
+  #      if(verbose){
+  #        print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
+  #                     " with ", metric," ",round(max(bestmodel$results[,metric]),3)))
+  #      }
+  #    }
+  #    if (!maximize){
+  #      selectedvars_perf <- c(selectedvars_perf,min(bestmodel$results[,metric]))
+  #      if(verbose){
+  #        print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
+  #                     " with ",metric," ",round(min(bestmodel$results[,metric]),3)))
+  #      }
+  #    }
+
   bestmodel$selectedvars <- selectedvars
   bestmodel$selectedvars_perf <- selectedvars_perf
   bestmodel$selectedvars_perf_SE <- selectedvars_SE
+  if(globalval){
+    bestmodel$selectedvars_perf_SE <- NA
+  }
   bestmodel$perf_all <- perf_all
   bestmodel$perf_all <- bestmodel$perf_all[!apply(is.na(bestmodel$perf_all), 1, all),]
   bestmodel$minVar <- minVar

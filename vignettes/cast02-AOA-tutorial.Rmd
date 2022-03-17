@@ -1,11 +1,10 @@
 ---
-title: "Area of applicability of spatial prediction models"
+title: "2. Area of applicability of spatial prediction models"
 author: "Hanna Meyer"
 date: "`r Sys.Date()`"
 output:
-  rmarkdown::html_document:
+  rmarkdown::html_vignette:
     toc: true
-    theme: united
 vignette: >
   %\VignetteIndexEntry{Area of applicability of spatial prediction models}
   %\VignetteEngine{knitr::rmarkdown}
@@ -20,13 +19,13 @@ knitr::opts_chunk$set(fig.width = 8.83)
 
 
 # Introduction
-In spatial predictive mapping, models are often applied to make predictions far beyond sampling locations (i.e. field observarions used to map a variable even on a global scale), where new locations might considerably differ in their environmental properties. However, areas in the predictor space without support of training data are problematic. The model has no knowledge about these environments and predictions for such areas have to be considered highly uncertain. 
+In spatial predictive mapping, models are often applied to make predictions far beyond sampling locations (i.e. field observations used to map a variable even on a global scale), where new locations might considerably differ in their environmental properties. However, areas in the predictor space without support of training data are problematic. The model has not been enabled to learn about relationships in these environments and predictions for such areas have to be considered highly uncertain. 
 
-Here we implement the methodology described in [Meyer\&Pebesma (2020)](https://arxiv.org/abs/2005.07939) to estimate the "area of applicability" (AOA) of spatial prediction models. The AOA is defined as the area where we enabled the model to learn about relationships based on the training data, and where the estimated cross-validation performance holds. To delineate the AOA, first an dissimilarity index (DI) is calculated that is based on distances to the training data in the multidimensional predictor variable space. To account for relevance of predictor variables responsible for prediction patterns we weight variables by the model-derived importance scores prior to distance calculation. The AOA is then derived by applying a threshold based on the DI observed in the training data using cross-validation.
+In CAST, we implement the methodology described in [Meyer\&Pebesma (2021)](https://doi.org/10.1111/2041-210X.13650) to estimate the "area of applicability" (AOA) of (spatial) prediction models. The AOA is defined as the area where we enabled the model to learn about relationships based on the training data, and where the estimated cross-validation performance holds. To delineate the AOA, first an dissimilarity index (DI) is calculated that is based on distances to the training data in the multidimensional predictor variable space. To account for relevance of predictor variables responsible for prediction patterns we weight variables by the model-derived importance scores prior to distance calculation. The AOA is then derived by applying a threshold based on the DI observed in the training data using cross-validation.
  
 This tutorial shows an example of how to estimate the area of applicability of spatial prediction models. 
 
-For further information see: Meyer, H., Pebesma, E. (2020): Predicting into unknown space? Estimating the area of applicability of spatial prediction models. [https://arxiv.org/abs/2005.07939]
+For further information see: Meyer, H., & Pebesma, E. (2021). Predicting into unknown space? Estimating the area of applicability of spatial prediction models. Methods in Ecology and Evolution, 12, 1620– 1633. [https://doi.org/10.1111/2041-210X.13650]
 
 ### Getting started
 ```{r, message = FALSE, warning=FALSE}
@@ -53,7 +52,7 @@ RMSE = function(a, b){
 
 ### Generate Predictors
 
-As predictor variables, a set of bioclimatic variables are used (https://www.worldclim.org/). For this tutorial, they have been originally downloaded using the getData function from the raster package but cropped to an area in central Europe. The cropped data are provided in the CAST package.
+As predictor variables, a set of bioclimatic variables are used (https://www.worldclim.org). For this tutorial, they have been originally downloaded using the getData function from the raster package but cropped to an area in central Europe. The cropped data are provided in the CAST package.
 
 ```{r, message = FALSE, warning=FALSE}
 predictors <- stack(system.file("extdata","bioclim.grd",package="CAST"))
@@ -97,7 +96,7 @@ trainDat <- trainDat[complete.cases(trainDat),]
 ```
 
 ### Train the model
-Random Forest is applied here as machine learning algorithm (others can be used as well, as long as variable importance is returned). The model is validated by cross-validation to estimate the prediction error.
+Random Forest is applied here as machine learning algorithm (others can be used as well, as long as variable importance is returned). The model is validated by default cross-validation to estimate the prediction error.
 ```{r,message = FALSE, warning=FALSE}
 set.seed(10)
 model <- train(trainDat[,names(predictors)],
@@ -116,7 +115,7 @@ plot(varImp(model,scale = F),col="black")
 ```
 
 ### Predict and calculate error
-The trainined model is then used to make predictions for the entire area of interest. Since a simulated area-wide response is used, it's possible in this tutorial to compare the predictions with the true reference.
+The trained model is then used to make predictions for the entire area of interest. Since a simulated area-wide response is used, it's possible in this tutorial to compare the predictions with the true reference.
 ```{r,message = FALSE, warning=FALSE}
 prediction <- predict(predictors,model)
 truediff <- abs(prediction-response)
@@ -126,15 +125,24 @@ spplot(stack(prediction,response),main=c("prediction","reference"))
 ## AOA Calculation
 The visualization above shows the predictions made by the model. In the next step, the DI and AOA will be calculated.
 
-The AOA calculation takes the model as input to extract the importance of the predictors, used as weights in multidimensional distance calculation. Note that the AOA can also be calculated without a trained model (i.e. using training data and new data only). In this case all predicor variables are trated equally important (unless weights are given in form of a table).
+The AOA calculation takes the model as input to extract the importance of the predictors, used as weights in multidimensional distance calculation. Note that the AOA can also be calculated without a trained model (i.e. using training data and new data only). In this case all predictor variables are treated equally important (unless weights are given in form of a table).
 
 ```{r,message = FALSE, warning=FALSE}
 AOA <- aoa(predictors, model)
-attributes(AOA)$aoa_stats
+class(AOA)
+names(AOA)
+print(AOA)
 ```
 
-The output of the aoa function are two raster data: The first is the DI that is the normalized and weighted minimum distance to a nearest training data point divided by the average distance within the training data. The AOA is derived from the DI by using a threshold. The threshold is the (outlier-removed) maximum DI observed in the training data where the DI of the training data is calculated by considering the cross-validation folds.
-The used threshold is returned in the AOA statistics.
+Plotting the `aoa` object shows the distribution of DI values within the training data and the DI of the new data.
+
+```{r,message = FALSE, warning=FALSE}
+plot(AOA)
+```
+The most output of the `aoa` function are two raster data: The first is the DI that is the normalized and weighted minimum distance to a nearest training data point divided by the average distance within the training data. The AOA is derived from the DI by using a threshold. The threshold is the (outlier-removed) maximum DI observed in the training data where the DI of the training data is calculated by considering the cross-validation folds.
+The used threshold and all relevant information about the training data DI is returned in the `parameters` list entry.
+
+We can plot the DI as well as predictions onyl in the AOA:
 
 ```{r,message = FALSE, warning=FALSE}
 grid.arrange(
@@ -147,6 +155,7 @@ The patterns in the DI are in general agreement with the true prediction error.
 Very high values are present in the Alps, as they have not been covered by training data but feature very distinct environmental conditions. Since the DI values for these areas are above the threshold, we regard this area as outside the AOA.
 
 
+
 ## AOA for spatially clustered data?
 
 The example above had randomly distributed training samples. However, sampling locations might also be highly clustered in space. In this case, the random cross-validation is not meaningful (see e.g.
@@ -154,7 +163,7 @@ The example above had randomly distributed training samples. However, sampling l
 [Valavi et al. 2019](https://doi.org/10.1111/2041-210X.13107),
 [Roberts et al. 2018](https://doi.org/10.1111/ecog.02881),
 [Pohjankukka et al. 2017](https://doi.org/10.1080/13658816.2017.1346255),
-[Brenning 2012](https://CRAN.R-project.org/package=sperrorest/))
+[Brenning 2012](https://CRAN.R-project.org/package=sperrorest))
 
 Also the threshold for the AOA is not reliable, because it is based in distance to a nearest data point within the training data (which is usually very small when data are clustered). Instead, cross-validation should be based on a leave-cluster-out approach, and the AOA estimation based on distances to a nearest data point not located in the same spatial cluster.
  
@@ -242,8 +251,16 @@ grid.arrange(spplot(AOA_spatial$DI,col.regions=viridis(100),main="DI"),
 ncol=3)
 ```
 
-Note that the AOA is much larger for the spatial approach. However, the spatial cross-validation error is considerably larger, hence also the area for which this error applies is larger.
-The random cross-validation performance is very high, however, the area to which the performance applies is small.
+Note that the AOA is much larger for the spatial CV approach. However, the spatial cross-validation error is considerably larger, hence also the area for which this error applies is larger.
+The random cross-validation performance is very high, however, the area to which the performance applies is small. This fact is also apparent if you plot the `aoa` objects which will display the distributions of the DI of the training data as well as the DI of the new data. For random CV most of the predictionDI is larger than the AOA threshold determined by the trainDI. Using spatial CV, the predictionDI is well within the DI of the training samples.
+
+```{r, message = FALSE, warning=FALSE}
+grid.arrange(plot(AOA_spatial) + ggplot2::ggtitle("Spatial CV"),
+             plot(AOA_random) + ggplot2::ggtitle("Random CV"), ncol = 2)
+```
+
+
+
 
 ## Comparison prediction error with model error
 
@@ -265,7 +282,7 @@ The results indicate that there is a high agreement between the model CV error (
 
 ## Relationship between the DI and the performance measure
 
-The relationship between error and DI can be used to limit predictioons to an area (within the AOA) where a required performance (e.g. RMSE, R2, Kappa, Accuracy) applies.
+The relationship between error and DI can be used to limit predictions to an area (within the AOA) where a required performance (e.g. RMSE, R2, Kappa, Accuracy) applies.
 This can be done using the result of calibrate_aoa which used the relationship analyzed in a window of DI values. The corresponding model (here: shape constrained additive models which is the default: Monotone increasing P-splines with the dimension of the basis used to represent the smooth term is 6 and a 2nd order penalty.) can be used to estimate the performance on a pixel level, which then allows limiting predictions using a threshold. Note that we used a multi-purpose CV to estimate the relationship between the DI and the RMSE here (see details in the paper).
 
 ```{r,message = FALSE, warning=FALSE}
@@ -280,7 +297,7 @@ spplot(AOA_calib$AOA$expected_RMSE,col.regions=viridis(100),main="expected RMSE"
 The example above used simulated data so that it allows to analyze the reliability of the AOA. However, a simulated area-wide response is not available in usual prediction tasks. Therefore, as a second example the AOA is estimated for a dataset that has point observations as a reference only.
 
 ## Data and preprocessing
-To do so, we will work with the cookfarm dataset, described in e.g. [Gasch et al 2015](https://www.sciencedirect.com/science/article/pii/S2211675315000251/). The dataset included in CAST is a re-structured dataset. Find more details also in the vignette "Introduction to CAST".
+To do so, we will work with the cookfarm dataset, described in e.g. [Gasch et al 2015](https://www.sciencedirect.com/science/article/pii/S2211675315000251). The dataset included in CAST is a re-structured dataset. Find more details also in the vignette "Introduction to CAST".
 We will use soil moisture (VW) as response variable here. Hence, we're aiming at making a spatial continuous prediction based on limited measurements from data loggers.
 
 ```{r, message = FALSE, warning=FALSE}
@@ -316,7 +333,7 @@ model
 ```
 
 ### Prediction 
-Next, the model is used tpo make predictions for the entire study area.
+Next, the model is used to make predictions for the entire study area.
 ```{r, message = FALSE, warning=FALSE}
 #Predictors:
 spplot(stretch(studyArea[[predictors]]))
@@ -326,7 +343,7 @@ prediction <- predict(studyArea,model)
 ```
 
 ## AOA estimation
-Next we're limniting the predictions to the AOA. Predictions outside the AOA should be excluded.
+Next we're limiting the predictions to the AOA. Predictions outside the AOA should be excluded.
 
 ```{r, message = FALSE, warning=FALSE}
 AOA <- aoa(studyArea,model)
@@ -339,7 +356,16 @@ grid.arrange(spplot(AOA$DI,col.regions=viridis(100),main="DI with sampling locat
 ```
 
 
-## Final notes
-* The AOA is estimated based on training data and new data (i.e. raster stack of the entire area of interest). The trainined model are only used for getting the variable importance needed to weight predictor variables. These can be given as a table either, so the approach can be used with other packages than caret as well.
+# Final notes
+
+* The AOA is estimated based on training data and new data (i.e. raster stack of the entire area of interest). The trained model are only used for getting the variable importance needed to weight predictor variables. These can be given as a table either, so the approach can be used with other packages than caret as well.
 * Knowledge on the AOA is important when predictions are used as a baseline for decision making or subsequent environmental modelling. 
 * We suggest that the AOA should be provided alongside the prediction map and complementary to the communication of validation performances. 
+
+## Further reading
+
+*  Meyer, H., & Pebesma, E. (2022): Machine learning-based global maps of ecological variables and the challenge of assessing them. Nature Communications. Accepted. 
+
+*  Meyer, H., & Pebesma, E. (2021). Predicting into unknown space? Estimating the area of applicability of spatial prediction models. Methods in Ecology and Evolution, 12, 1620– 1633. [https://doi.org/10.1111/2041-210X.13650]
+
+*  Tutorial (https://youtu.be/EyP04zLe9qo) and Lecture (https://youtu.be/OoNH6Nl-X2s) recording from OpenGeoHub summer school 2020 on the area of applicability. As well as talk at the OpenGeoHub summer school 2021: https://av.tib.eu/media/54879

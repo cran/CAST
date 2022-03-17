@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Marvin Ludwig" />
+
+<meta name="date" content="2022-03-17" />
+
+<title>3. AOA in Parallel</title>
+
+<script src="data:application/javascript;base64,Ly8gUGFuZG9jIDIuOSBhZGRzIGF0dHJpYnV0ZXMgb24gYm90aCBoZWFkZXIgYW5kIGRpdi4gV2UgcmVtb3ZlIHRoZSBmb3JtZXIgKHRvCi8vIGJlIGNvbXBhdGlibGUgd2l0aCB0aGUgYmVoYXZpb3Igb2YgUGFuZG9jIDwgMi44KS4KZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcignRE9NQ29udGVudExvYWRlZCcsIGZ1bmN0aW9uKGUpIHsKICB2YXIgaHMgPSBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCJkaXYuc2VjdGlvbltjbGFzcyo9J2xldmVsJ10gPiA6Zmlyc3QtY2hpbGQiKTsKICB2YXIgaSwgaCwgYTsKICBmb3IgKGkgPSAwOyBpIDwgaHMubGVuZ3RoOyBpKyspIHsKICAgIGggPSBoc1tpXTsKICAgIGlmICghL15oWzEtNl0kL2kudGVzdChoLnRhZ05hbWUpKSBjb250aW51ZTsgIC8vIGl0IHNob3VsZCBiZSBhIGhlYWRlciBoMS1oNgogICAgYSA9IGguYXR0cmlidXRlczsKICAgIHdoaWxlIChhLmxlbmd0aCA+IDApIGgucmVtb3ZlQXR0cmlidXRlKGFbMF0ubmFtZSk7CiAgfQp9KTsK"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<link rel="stylesheet" href="data:text/css,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" type="text/css" />
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">3. AOA in Parallel</h1>
+<h4 class="author">Marvin Ludwig</h4>
+<h4 class="date">2022-03-17</h4>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#generate-example-data">Generate Example Data</a></li>
+<li><a href="#parallel-aoa-1-providing-a-cluster">Parallel AOA 1: Providing a Cluster</a></li>
+<li><a href="#parallel-aoa-2-divide-and-conquer">Parallel AOA 2: Divide and Conquer</a></li>
+<li><a href="#final-remarks">Final Remarks</a></li>
+</ul>
+</div>
+
+<p>Estimating the Area of Applicability (AOA) can be computationally intensive, depending on the amount of training data used for a model as well as the amount of new data the AOA has to be computed. This vignette goes over the possibility to (partly) compute the AOA in parallel. We will use the same data setup as the vignette “Area of applicability of spatial prediction models”. Please have a look there for a general introduction to the AOA and the details about the example data generation.</p>
+<div id="generate-example-data" class="section level1">
+<h1>Generate Example Data</h1>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(CAST)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(virtualspecies)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(caret)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(raster)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sp)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(viridis)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(latticeExtra)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gridExtra)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>predictors <span class="ot">&lt;-</span> <span class="fu">stack</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>,<span class="st">&quot;bioclim.grd&quot;</span>,<span class="at">package=</span><span class="st">&quot;CAST&quot;</span>))</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">generateSpFromPCA</span>(predictors,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>                              <span class="at">means =</span> <span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">1</span>),<span class="at">sds =</span> <span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="at">plot=</span>F)<span class="sc">$</span>suitab.raster</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>mask <span class="ot">&lt;-</span> predictors[[<span class="dv">1</span>]]</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="fu">values</span>(mask)[<span class="sc">!</span><span class="fu">is.na</span>(<span class="fu">values</span>(mask))] <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>mask <span class="ot">&lt;-</span> <span class="fu">rasterToPolygons</span>(mask)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate Clustered Training Samples</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>csample <span class="ot">&lt;-</span> <span class="cf">function</span>(x,n,nclusters,maxdist,seed){</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set.seed</span>(seed)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  cpoints <span class="ot">&lt;-</span> sp<span class="sc">::</span><span class="fu">spsample</span>(x, <span class="at">n =</span> nclusters, <span class="at">type=</span><span class="st">&quot;random&quot;</span>)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  result <span class="ot">&lt;-</span> cpoints</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  result<span class="sc">$</span>clstrID <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(cpoints)</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(cpoints)){</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    ext <span class="ot">&lt;-</span> rgeos<span class="sc">::</span><span class="fu">gBuffer</span>(cpoints[i,], <span class="at">width =</span> maxdist)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    newsamples <span class="ot">&lt;-</span> sp<span class="sc">::</span><span class="fu">spsample</span>(ext, <span class="at">n =</span> (n<span class="sc">-</span>nclusters)<span class="sc">/</span>nclusters, </span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>                               <span class="at">type=</span><span class="st">&quot;random&quot;</span>)</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    newsamples<span class="sc">$</span>clstrID <span class="ot">&lt;-</span> <span class="fu">rep</span>(i,<span class="fu">length</span>(newsamples))</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    result <span class="ot">&lt;-</span> <span class="fu">rbind</span>(result,newsamples)</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>  result<span class="sc">$</span>ID <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(result)</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(result)</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>samplepoints <span class="ot">&lt;-</span> <span class="fu">csample</span>(mask,<span class="dv">75</span>,<span class="dv">15</span>,<span class="at">maxdist=</span><span class="fl">0.20</span>,<span class="at">seed=</span><span class="dv">15</span>)</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>trainDat <span class="ot">&lt;-</span> <span class="fu">extract</span>(predictors,samplepoints,<span class="at">df=</span><span class="cn">TRUE</span>)</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>trainDat<span class="sc">$</span>response <span class="ot">&lt;-</span> <span class="fu">extract</span> (response,samplepoints)</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>trainDat <span class="ot">&lt;-</span> <span class="fu">merge</span>(trainDat,samplepoints,<span class="at">by.x=</span><span class="st">&quot;ID&quot;</span>,<span class="at">by.y=</span><span class="st">&quot;ID&quot;</span>)</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>trainDat <span class="ot">&lt;-</span> trainDat[<span class="fu">complete.cases</span>(trainDat),]</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">10</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>model_random <span class="ot">&lt;-</span> <span class="fu">train</span>(trainDat[,<span class="fu">names</span>(predictors)],</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>               trainDat<span class="sc">$</span>response,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">method=</span><span class="st">&quot;rf&quot;</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>               <span class="at">importance=</span><span class="cn">TRUE</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>               <span class="at">trControl =</span> <span class="fu">trainControl</span>(<span class="at">method=</span><span class="st">&quot;cv&quot;</span>))</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>prediction_random <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">predict</span>(predictors,model_random)</span></code></pre></div>
+</div>
+<div id="parallel-aoa-1-providing-a-cluster" class="section level1">
+<h1>Parallel AOA 1: Providing a Cluster</h1>
+<p>The simplest methods to compute the AOA in parallel is by providing a <code>cluster</code> object in the function call. This way the distance calculation between training data and new data will run on multiple cores (utilizing <code>parallel::parApply</code>). This is recommended if the training set is relatively small but new locations for which the AOA should be computed are abundant.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(doParallel)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(parallel)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">makeCluster</span>(<span class="dv">4</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="fu">registerDoParallel</span>(cl)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>AOA <span class="ot">&lt;-</span> <span class="fu">aoa</span>(studyArea,model,<span class="at">cl=</span>cl)</span></code></pre></div>
+</div>
+<div id="parallel-aoa-2-divide-and-conquer" class="section level1">
+<h1>Parallel AOA 2: Divide and Conquer</h1>
+<p>For even better performances, it is recommended to compute the AOA in two steps. First, the DI of training data and the resulting DI threshold is computed from the model or training data with the function <code>trainDI</code>. The result from trainDI is usually the first step of the <code>aoa</code> function, however it can be skipped by providing the trainDI object in the function call. This makes it possible to compute the AOA on multiple raster tiles at once (e.g. on different cores). This is especially useful for very large prediction areas, e.g. in global mapping.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>model_random_trainDI <span class="ot">=</span> <span class="fu">trainDI</span>(model_random)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(model_random_trainDI)</span></code></pre></div>
+<pre><code>## DI of 74 observation 
+## Predictors: bio2 bio5 bio10 bio13 bio14 bio19 
+## 
+## AOA Threshold: 0.08928021</code></pre>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(model_random_trainDI, <span class="st">&quot;path/to/file&quot;</span>)</span></code></pre></div>
+<p>If you have a large raster, you divide it into multiple smaller tiles and apply the trainDI object afterwards to each tile.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>r1 <span class="ot">=</span> <span class="fu">crop</span>(predictors, <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">7</span>,<span class="fl">42.33333</span>,<span class="fl">54.83333</span>))</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>r2 <span class="ot">=</span> <span class="fu">crop</span>(predictors, <span class="fu">c</span>(<span class="dv">7</span>,<span class="dv">14</span>,<span class="fl">42.33333</span>,<span class="fl">54.83333</span>))</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>r3 <span class="ot">=</span> <span class="fu">crop</span>(predictors, <span class="fu">c</span>(<span class="dv">14</span>,<span class="dv">21</span>,<span class="fl">42.33333</span>,<span class="fl">54.83333</span>))</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="fu">grid.arrange</span>(<span class="fu">spplot</span>(r1[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 1&quot;</span>),</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(r2[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 2&quot;</span>),</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(r3[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 3&quot;</span>), <span class="at">ncol =</span> <span class="dv">3</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>Use the <code>trainDI</code> argument in the <code>aoa</code> function to specify, that you want to use a previously computed trainDI object.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>aoa_r1 <span class="ot">=</span> <span class="fu">aoa</span>(<span class="at">newdata =</span> r1, <span class="at">trainDI =</span> model_random_trainDI)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="fu">grid.arrange</span>(<span class="fu">spplot</span>(r1[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 1: Predictors&quot;</span>),</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(aoa_r1<span class="sc">$</span>DI, <span class="at">main =</span> <span class="st">&quot;Tile 1: DI&quot;</span>),</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(aoa_r1<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 1: AOA&quot;</span>), <span class="at">ncol =</span> <span class="dv">3</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAIAAACb4TnXAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAV7ElEQVR4nO3de1BU9f/H8fcugsglEkEBRUxEEdHBAAVFUxtUUFMoiEnTUbzbVy2zwVugmWljYVneBpomM3EUMBGQdBIU7xe8IKgISqWooBm4gcDu+f3x+XVm24UFZN+g9npM0+wezzl79sBz97OH3bMKSZIIAHgoW3sDAF5kCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAABghMABGCAyAEQIDYITAnl5gYKDCoE8//ZSIQkJCxFWxVFBQkEKhaNeuXfM3YMCAAQqFIisrq0lLLVmyRGc7O3bsOHjw4FmzZl27dk17Tl9fXzHDgwcP9NfznN59bcHBwWLb+vbtW988e/funTBhgpOTU9u2bTt37hwSEpKcnNz4FSKw51JRUVFERMSZM2eMsrbS0tLjx49v27bN29v76NGjRlknK6Pc/dLS0oMHD4rLubm5ubm5OjNUVFQEBweHhIT8/PPPJSUl1dXVd+7c2bt3b2hoaFBQUHl5eWNW2KY5m/gft2DBgrfeektc3r9///79+4lo0qRJAQEBYqKvry8R+fj41NbWGvFGk5OTf//99+avaurUqQMHDpQk6Y8//khJSbl06ZJKpXrnnXfy8vKsra0bsyXP9d3ftWuX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" /><!-- --></p>
+<p>You can now run the aoa function in parallel on the different tiles! Of course you can use for favorite parallel backend for this task, here we use mclapply from the <code>parallel</code> package.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(parallel)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>tiles_aoa <span class="ot">=</span> <span class="fu">mclapply</span>(<span class="fu">list</span>(r1, r2, r3), <span class="cf">function</span>(tile){</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">aoa</span>(<span class="at">newdata =</span> tile, <span class="at">trainDI =</span> model_random_trainDI)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>}, <span class="at">mc.cores =</span> <span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">grid.arrange</span>(<span class="fu">spplot</span>(tiles_aoa[[<span class="dv">1</span>]]<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 1&quot;</span>),</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(tiles_aoa[[<span class="dv">2</span>]]<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 2&quot;</span>),</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(tiles_aoa[[<span class="dv">3</span>]]<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 3&quot;</span>), <span class="at">ncol =</span> <span class="dv">3</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>For larger tasks it might be useful to save the tiles to you hard-drive and load them one by one to avoid filling up your RAM.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Simple Example Code for raster tiles on the hard drive</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>tiles <span class="ot">=</span> <span class="fu">list.files</span>(<span class="st">&quot;path/to/tiles&quot;</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>tiles_aoa <span class="ot">=</span> <span class="fu">mclapply</span>(tiles, <span class="cf">function</span>(tile){</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  current <span class="ot">=</span> raster<span class="sc">::</span><span class="fu">stack</span>(tile)</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">aoa</span>(<span class="at">newdata =</span> current, <span class="at">trainDI =</span> model_random_trainDI)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>}, <span class="at">mc.cores =</span> <span class="dv">3</span>)</span></code></pre></div>
+</div>
+<div id="final-remarks" class="section level1">
+<h1>Final Remarks</h1>
+<p>It should be possible to combine both parallelization methods! For example on a High Performance Cluster, multiple raster tiles can be handled by different nodes and then, each node computes the distance between prediction and training data on multiple cores.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

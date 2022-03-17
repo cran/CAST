@@ -21,7 +21,7 @@ data_sp <- st_as_sf(data_sp,coords=c("Easting","Northing"),crs=26911)
 plot(data_sp,axes=T,col="black")
 
 ## ---- message = FALSE, warning=FALSE, eval=user_hanna-------------------------
-#...or plot the data with mapview (recommended!):
+#...or plot the data with mapview:
 library(mapview)
 mapviewOptions(basemaps = c("Esri.WorldImagery"))
 mapview(data_sp)

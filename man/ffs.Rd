@@ -10,6 +10,7 @@ ffs(
   method = "rf",
   metric = ifelse(is.factor(response), "Accuracy", "RMSE"),
   maximize = ifelse(metric == "RMSE", FALSE, TRUE),
+  globalval = FALSE,
   withinSE = FALSE,
   minVar = 2,
   trControl = caret::trainControl(),
@@ -30,6 +31,8 @@ ffs(
 \item{metric}{see \code{\link{train}}}
 
 \item{maximize}{see \code{\link{train}}}
+
+\item{globalval}{Logical. Should models be evaluated based on 'global' performance? See \code{\link{global_validation}}}
 
 \item{withinSE}{Logical Models are only selected if they are better than the
 currently best models Standard error}
@@ -83,9 +86,9 @@ it is assumed that the optimal variables can only be found if more than 2
 are considered at the same time.
 }
 \note{
-This validation is particulary suitable for spatial
-leave-location-out cross validations where variable selection
-MUST be based on the performance of the model on the hold out station.
+This variable selection is particularly suitable for spatial
+cross validations where variable selection
+MUST be based on the performance of the model for predicting new spatial units.
 See Meyer et al. (2018) and Meyer et al. (2019) for further details.
 }
 \examples{
