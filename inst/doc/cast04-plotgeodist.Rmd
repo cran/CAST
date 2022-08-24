@@ -6,13 +6,13 @@ output:
   rmarkdown::html_vignette:
     toc: true
 vignette: >
-  %\VignetteIndexEntry{Visualization of geographic- and feature space distances}
+  %\VignetteIndexEntry{Visualization of nearest neighbor distance distributions}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,fig.width=6.1, fig.height=3.5)
+knitr::opts_chunk$set(echo = TRUE,fig.width=6.2, fig.height=3.4)
 
 ```
 
@@ -21,11 +21,11 @@ knitr::opts_chunk$set(echo = TRUE,fig.width=6.1, fig.height=3.5)
 This tutorial shows how euclidean nearest neighbor distances in the geographic space or feature space can be calculated and visualized using CAST.
 This type of visualization allows to assess whether training data feature a representative coverage of the prediction area and if cross-validation (CV) folds (or independent test data) are adequately chosen to be representative for the prediction locations.
 
-See e.g. Meyer and Pebesma (2022) and Mila et al. (2022) for further discussion on this topic.
+See e.g. [Meyer and Pebesma (2022)](https://doi.org/10.1038/s41467-022-29838-9) and [Milà et al. (2022)](https://doi.org/10.1111/2041-210X.13851) for further discussion on this topic.
 
 ## Sample data
 
-As example data, we use two different sets of global virtual reference data: One is a spatial random sample and in the second example, reference data are clustered in geographic space (see Meyer and Pebesma (2022) for more discussions on this).
+As example data, we use two different sets of global virtual reference data: One is a spatial random sample and in the second example, reference data are clustered in geographic space (see [Meyer and Pebesma (2022)](https://doi.org/10.1038/s41467-022-29838-9) for more discussions on this).
 
 ```{r, message = FALSE, warning=FALSE}
 library(CAST)
@@ -34,6 +34,16 @@ library(raster)
 library(sf)
 library(rnaturalearth)
 library(ggplot2)
+```
+
+Here we can define some parameters to run the example with different settings
+
+```{r, message = FALSE, warning=FALSE}
+seed <- 10 # random realization
+samplesize <- 300 # how many samples will be used?
+nparents <- 20 #For clustered samples: How many clusters? 
+radius <- 7 # For clustered samples: What is the radius of a cluster?
+
 ```
 
 ### Prediction area
@@ -50,8 +60,8 @@ Then, we simulate the random sample and visualize the data on the entire global 
 
 ```{r,message = FALSE, warning=FALSE, results='hide'}
 sf_use_s2(FALSE)
-set.seed(10)
-pts_random <- st_sample(co, 1000)
+set.seed(seed)
+pts_random <- st_sample(co, samplesize)
 ### See points on the map:
 ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
   geom_sf(data = pts_random, color = "#F8766D",size=0.5, shape=3) +
@@ -94,9 +104,9 @@ clustered_sample <- function(sarea, nsamples, nparents, radius){
 ```
 
 ```{r,message = FALSE, warning=FALSE, results='hide'}
-set.seed(10)
+set.seed(seed)
 sf_use_s2(FALSE)
-pts_clustered <- clustered_sample(co, 1000, 20, 8)
+pts_clustered <- clustered_sample(co, samplesize, nparents, radius)
 
 ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
   geom_sf(data = pts_clustered, color = "#F8766D",size=0.5, shape=3) +
@@ -114,9 +124,11 @@ data to their nearest neighbor ("sample-to-sample") with the distribution of dis
 ```{r,message = FALSE, warning=FALSE, results='hide'}
 dist_random <- plot_geodist(pts_random,co,
                             sampling="Fibonacci",
+                            unit="km",
                             showPlot = FALSE)
 dist_clstr <- plot_geodist(pts_clustered,co,
                            sampling="Fibonacci",
+                           unit="km",
                            showPlot = FALSE)
 
 dist_random$plot+scale_x_log10(labels=round)+ggtitle("Randomly distributed reference data")
@@ -153,6 +165,7 @@ ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
 dist_clstr <- plot_geodist(pts_clustered,co,
                            sampling="Fibonacci", 
                            cvfolds= randomfolds, 
+                           unit="km",
                            showPlot=FALSE)
 dist_clstr$plot+scale_x_log10(labels=round)
 
@@ -180,14 +193,86 @@ ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
 dist_clstr <- plot_geodist(pts_clustered,co,
                            sampling="Fibonacci",
                            cvfolds= spatialfolds$indexOut, 
+                           unit="km",
                            showPlot=FALSE)
 dist_clstr$plot+scale_x_log10(labels=round)
 
              
 ```
 
-See that this fits the nearest neighbor distribution of the prediction area much better (See Mila et al. (2022) for a better idea to do the spatial CV).
-Note that plot_geodist also allows inspecting independent test data instead of cross validation folds. See ?plot_geodist.
+See that this fits the nearest neighbor distribution of the prediction area much better. Note that plot_geodist also allows inspecting independent test data instead of cross validation folds. See ?plot_geodist.
+
+#### Why has spatial CV sometimes blamed for being too pessimistic ?
+
+Recently, [Wadoux et al. (2021)](https://doi.org/10.1016/j.ecolmodel.2021.109692) published a paper with the title "Spatial cross-validation is not the right way to evaluate map accuracy" where they state that "spatial cross-validation strategies resulted in a grossly pessimistic map accuracy assessment". Why do they come to this conclusion?
+The reference data they used in their study where either regularly, random or comparably mildly clustered in geographic space, but they applied spatial CV strategies that held large spatial units back during CV. Here we can see what happens when we apply spatial CV to randomly distributed reference data.
+
+```{r,message = FALSE, warning=FALSE, results='hide'}
+# create a spatial CV for the randomly distributed data. Here:
+# "leave region-out-CV"
+sf_use_s2(FALSE)
+pts_random_co <- st_join(st_as_sf(pts_random),co)
+
+
+ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
+  geom_sf(data = pts_random_co, aes(color=subregion),size=0.5, shape=3) +
+  scale_color_manual(values=rainbow(length(unique(pts_random_co$subregion))))+
+  guides(fill = FALSE, col = FALSE) +
+  labs(x = NULL, y = NULL)+ ggtitle("spatial fold membership by color")
+
+```
+
+```{r,message = FALSE, warning=FALSE, results='hide'}
+
+spfolds_rand <- CreateSpacetimeFolds(pts_random_co,spacevar = "subregion",
+                                     k=length(unique(pts_random_co$subregion)))
+dist_rand_sp <- plot_geodist(pts_random_co,co,
+                             sampling="Fibonacci", 
+                             cvfolds= spfolds_rand$indexOut, 
+                             unit="km",
+                             showPlot=FALSE)
+dist_rand_sp$plot+scale_x_log10(labels=round)
+```
+
+We see that the nearest neighbor distances during cross-validation don't match the nearest neighbor distances during prediction. But compared to the section above, this time the cross-validation folds are too far away from reference data. Naturally we would end up with overly pessimistic performance estimates because we make prediction situations during cross-validation harder, compared to what is required during model application to the entire area of interest (here global). The spatial CV chosen here is therefore not suitable for this prediction task, because prediction situations created during CV do not resemble what is encountered during prediction. 
+
+#### Nearest Neighbour Distance Matching CV
+
+A good way to approximate the geographical prediction distances during the CV is to use Nearest Neighbour Distance Matching (NNDM) CV (see [Milà et al., 2022](https://doi.org/10.1111/2041-210X.13851) for more details). NNDM CV is a variation of LOO CV in which the empirical distribution function of nearest neighbour distances found during prediction is matched during the CV process.
+
+
+
+```{r,message = FALSE, warning=FALSE, results='hide'}
+
+
+nndmfolds_clstr <- nndm(pts_clustered, modeldomain=co, sampling = "Fibonacci",samplesize = 2000)
+dist_clstr <- plot_geodist(pts_clustered,co,
+                           sampling = "Fibonacci",
+                           cvfolds = nndmfolds_clstr$indx_test, 
+                           cvtrain = nndmfolds_clstr$indx_train,
+                           unit="km",
+                           showPlot = FALSE)
+dist_clstr$plot+scale_x_log10(labels=round)
+
+```
+
+The NNDM CV-distance distribution matches the sample-to-prediction distribution very well. What happens if we use NNDM CV for the randomly-distributed sampling points instead? 
+
+```{r,message = FALSE, warning=FALSE, results='hide'}
+
+nndmfolds_rand <- nndm(pts_random_co,  modeldomain=co, sampling = "Fibonacci",samplesize = 2000)
+dist_rand <- plot_geodist(pts_random_co,co,
+                          sampling = "Fibonacci",
+                          cvfolds = nndmfolds_rand$indx_test, 
+                          cvtrain = nndmfolds_rand$indx_train,
+                          unit="km",
+                          showPlot = FALSE)
+dist_rand$plot+scale_x_log10(labels=round)
+
+```
+
+The NNDM CV-distance still matches the sample-to-prediction distance function.
+
 
 ## Distances in feature space
 
@@ -216,14 +301,14 @@ dist_clstr_sCV <- plot_geodist(pts_clustered,predictors_global,
                                cvfolds = spatialfolds$indexOut,
                                showPlot=FALSE)
 
+
 # Plot results:
-dist_clstr_rCV$plot+scale_x_log10(labels=round)+ggtitle("Clustered reference data and random CV")
-dist_clstr_sCV$plot+scale_x_log10(labels=round)+ggtitle("Clustered reference data and spatial CV")
+dist_clstr_rCV$plot+scale_x_log10()+ggtitle("Clustered reference data and random CV")
+dist_clstr_sCV$plot+scale_x_log10()+ggtitle("Clustered reference data and spatial CV")
 ```
 
-With regard to the chosen predictor variables we see that again the nearest neighbor distance of the clustered training data is rather small, compared to what is required during prediction. Again the random CV is not representative for the prediction locations while the spatial CV is doing a better job.
-
+With regard to the chosen predictor variables we see that again the nearest neighbor distance of the clustered training data is rather small, compared to what is required during prediction. Again the random CV is not representative for the prediction locations while spatial CV is doing a better job.
 
 ### References
-* Meyer, H., Pebesma, E. (2022): Machine learning-based global maps of ecological variables and the challenge of assessing them. Nature Communications. Accepted.
-* Mila, C., Mateu, J., Pebesma, E., Meyer, H. (2022): Nearest Neighbour Distance Matching Leave-One-Out Cross-Validation for map validation. Methods in Ecology and Evolution. Accepted.
+* Meyer, H., Pebesma, E. (2022): Machine learning-based global maps of ecological variables and the challenge of assessing them. Nature Communications 13, 2208. https://doi.org/10.1038/s41467-022-29838-9
+* Milà, C., Mateu, J., Pebesma, E., Meyer, H. (2022): Nearest Neighbour Distance Matching Leave-One-Out Cross-Validation for map validation. Methods in Ecology and Evolution 00, 1– 13. https://doi.org/10.1111/2041-210X.13851.

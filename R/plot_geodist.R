@@ -8,19 +8,21 @@
 #' @param modeldomain raster or sf object defining the prediction area (see Details)
 #' @param type "geo" or "feature". Should the distance be computed in geographic space or in the normalized multivariate predictor space (see Details)
 #' @param cvfolds optional. List of row indices of x that are held back in each CV iteration. See e.g. ?createFolds or ?createSpaceTimeFolds
+#' @param cvtrain optional. List of row indices of x to fit the model to in each CV iteration. If cvtrain is null but cvfolds is not, all samples but those included in cvfolds are used as training data
 #' @param testdata optional. object of class sf: Data used for independent validation
-#' @param samplesize numeric. How many prediction samples should be used? Only required if modeldomain is a raster (see Details)
+#' @param samplesize numeric. How many prediction samples should be used?
 #' @param sampling character. How to draw prediction samples? See \link[sp]{spsample}. Use sampling = "Fibonacci" for global applications.
 #' @param variables character vector defining the predictor variables used if type="feature. If not provided all variables included in modeldomain are used.
+#' @param unit character. Only if type=="geo" and only applied to the plot. Supported: "m" or "km".
+#' @param stat "density" for density plot or "ecdf" for cumulative plot.
 #' @param showPlot logical
-#' @return A list including the plot and the corresponding data.frame containing the distances
+#' @return A list including the plot and the corresponding data.frame containing the distances. Unit of returned geographic distances is meters.
 #' @details The modeldomain is a sf polygon or a raster that defines the prediction area. The function takes a regular point sample (amount defined by samplesize) from the spatial extent.
-#'     If type = "feature", the argument modeldomain (and if provided then also the testdata) has to include predictors. Predictor values for x are optional if modeldomain is a raster. If not provided they are extracted from the modeldomain rasterStack.
-#'
+#'     If type = "feature", the argument modeldomain (and if provided then also the testdata) has to include predictors. Predictor values for x are optional if modeldomain is a raster.
+#'     If not provided they are extracted from the modeldomain rasterStack.
 #' @note See Meyer and Pebesma (2022) for an application of this plotting function
-#'
+#' @seealso \code{\link{nndm}}
 #' @import ggplot2
-#'
 #' @author Hanna Meyer, Edzer Pebesma, Marvin Ludwig
 #' @examples
 #' \dontrun{
@@ -31,14 +33,13 @@
 #' ########### prepare sample data:
 #' dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
 #' dat <- aggregate(dat[,c("DEM","TWI", "NDRE.M", "Easting", "Northing")],
-#' by=list(as.character(dat$SOURCEID)),mean)
-#' pts <- dat[,-1]
-#' pts <- st_as_sf(pts,coords=c("Easting","Northing"))
+#'   by=list(as.character(dat$SOURCEID)),mean)
+#' pts <- st_as_sf(dat,coords=c("Easting","Northing"))
 #' st_crs(pts) <- 26911
 #' pts_train <- pts[1:29,]
 #' pts_test <- pts[30:42,]
 #' studyArea <- raster::stack(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))
-#' studyArea = studyArea[[c("DEM","TWI", "NDRE.M", "NDRE.Sd", "Bt")]]
+#' studyArea <- studyArea[[c("DEM","TWI", "NDRE.M", "NDRE.Sd", "Bt")]]
 #'
 #' ########### Distance between training data and new data:
 #' dist <- plot_geodist(pts_train,studyArea)
@@ -51,12 +52,17 @@
 #' folds <- createFolds(1:nrow(pts_train),k=3,returnTrain=FALSE)
 #' dist <- plot_geodist(x=pts_train, modeldomain=studyArea, cvfolds=folds)
 #'
+#' ## or use nndm to define folds
+#' nndm_pred <- nndm(pts_train, studyArea)
+#' dist <- plot_geodist(x=pts_train, modeldomain=studyArea,
+#'     cvfolds=nndm_pred$indx_test, cvtrain=nndm_pred$indx_train)
+#'
 #' ########### Distances in the feature space:
 #' plot_geodist(x=pts_train, modeldomain=studyArea,
-#' type = "feature",variables=c("DEM","TWI", "NDRE.M"))
+#'     type = "feature",variables=c("DEM","TWI", "NDRE.M"))
 #'
 #' dist <- plot_geodist(x=pts_train, modeldomain=studyArea, cvfolds = folds, testdata = pts_test,
-#' type = "feature",variables=c("DEM","TWI", "NDRE.M"))
+#'     type = "feature",variables=c("DEM","TWI", "NDRE.M"))
 #'
 #'############ Example for a random global dataset
 #'############ (refer to figure in Meyer and Pebesma 2022)
@@ -83,18 +89,20 @@
 #'### plot distances:
 #'dist <- plot_geodist(pts_random,co,showPlot=FALSE)
 #'dist$plot+scale_x_log10(labels=round)
-#'
-#' }
+#'}
 #' @export
 
 plot_geodist <- function(x,
                          modeldomain,
                          type = "geo",
                          cvfolds=NULL,
+                         cvtrain=NULL,
                          testdata=NULL,
                          samplesize=2000,
                          sampling = "regular",
                          variables=NULL,
+                         unit="m",
+                         stat = "density",
                          showPlot=TRUE){
 
 
@@ -151,12 +159,12 @@ plot_geodist <- function(x,
 
   ##### Distance to CV data:
   if(!is.null(cvfolds)){
-    cvd <- cvdistance(x, cvfolds, type,variables)
+    cvd <- cvdistance(x, cvfolds, cvtrain, type, variables)
     dists <- rbind(dists, cvd)
   }
 
   # Compile output and plot data ----
-  p <- plot.nnd(dists,type)
+  p <- plot.nnd(dists,type,unit,stat)
 
   if(showPlot){
     print(p)
@@ -189,7 +197,7 @@ sample2sample <- function(x, type,variables){
     x <- sf::st_drop_geometry(x)
     scaleparam <- attributes(scale(x))
     x <- data.frame(scale(x))
-    x_clean <- x[complete.cases(x),]
+    x_clean <- data.frame(x[complete.cases(x),])
     # sample to sample feature distance
     d <- c()
     for (i in 1:nrow(x_clean)){
@@ -295,12 +303,17 @@ sample2test <- function(x, testdata, type,variables){
 
 # between folds
 
-cvdistance <- function(x, cvfolds, type,variables){
+cvdistance <- function(x, cvfolds, cvtrain, type, variables){
 
   if(type == "geo"){
     d_cv <- c()
     for (i in 1:length(cvfolds)){
-      d_cv_tmp <- sf::st_distance(x[cvfolds[[i]],], x[-cvfolds[[i]],])
+
+      if(!is.null(cvtrain)){
+        d_cv_tmp <- sf::st_distance(x[cvfolds[[i]],], x[cvtrain[[i]],])
+      }else{
+        d_cv_tmp <- sf::st_distance(x[cvfolds[[i]],], x[-cvfolds[[i]],])
+      }
       d_cv <- c(d_cv,apply(d_cv_tmp, 1, min))
     }
 
@@ -317,15 +330,27 @@ cvdistance <- function(x, cvfolds, type,variables){
 
     d_cv <- c()
     for(i in 1:length(cvfolds)){
-      testdata_i <- x[cvfolds[[i]],]
-      traindata_i <- x[-cvfolds[[i]],]
+
+      if(!is.null(cvtrain)){
+        testdata_i <- x[cvfolds[[i]],]
+        traindata_i <- x[cvtrain[[i]],]
+      }else{
+        testdata_i <- x[cvfolds[[i]],]
+        traindata_i <- x[-cvfolds[[i]],]
+      }
 
       testdata_i <- testdata_i[complete.cases(testdata_i),]
       traindata_i <- traindata_i[complete.cases(traindata_i),]
 
       for (k in 1:nrow(testdata_i)){
 
-        trainDist <-  FNN::knnx.dist(testdata_i[k,],traindata_i,k=1)
+        trainDist <-  tryCatch(FNN::knnx.dist(testdata_i[k,],traindata_i,k=1),
+                               error = function(e)e)
+        if(inherits(trainDist, "error")){
+          trainDist <- NA
+          message("warning: no distance could be calculated for a fold.
+                  Possibly because predictor values are NA")
+          }
 
         trainDist[k] <- NA
         d_cv <- c(d_cv,min(trainDist,na.rm=T))
@@ -384,14 +409,21 @@ sampleFromArea <- function(modeldomain, samplesize, type,variables,sampling){
 
 # plot results
 
-plot.nnd = function(x,type){
-  xlabs <- "geographic distances (m)"
+plot.nnd = function(x,type,unit,stat){
+  if(unit=="km"){
+    x$dist <- x$dist/1000
+    xlabs <- "geographic distances (km)"
+  }else{
+    xlabs <- "geographic distances (m)"
+  }
+
   if( type=="feature"){ xlabs <- "feature space distances"}
   what <- "" #just to avoid check note
   if (type=="feature"){unit ="unitless"}
   p <- ggplot2::ggplot(data=x, aes(x=dist, group=what, fill=what)) +
-    ggplot2::geom_density(adjust=1.5, alpha=.4) +
+    ggplot2::geom_density(adjust=1.5, alpha=.4, stat=stat) +
     ggplot2::scale_fill_discrete(name = "distance function") +
     ggplot2::xlab(xlabs) +
-    ggplot2::theme(legend.position="bottom")
+    ggplot2::theme(legend.position="bottom",
+                   plot.margin = unit(c(0,0.5,0,0),"cm"))
 }
