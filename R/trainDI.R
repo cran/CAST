@@ -20,6 +20,8 @@
 #' @param CVtrain list. Each element contains the data points used for training during the cross validation iteration (i.e. held back data).
 #' Only required if no model is given and only required if CVtrain is not the opposite of CVtest (i.e. if a data point is not used for testing, it is used for training).
 #' Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.
+#' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.
+#' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
 #'
 #' @seealso \code{\link{aoa}}
 #' @importFrom graphics boxplot
@@ -31,11 +33,10 @@
 #'  \item{variables}{Names of the used variables}
 #'  \item{catvars}{Which variables are categorial}
 #'  \item{scaleparam}{Scaling parameters. Output from \code{scale}}
-#'  \item{trainDist_avrg}{A data frame with the average eucildean distance of each training point to every other point}
+#'  \item{trainDist_avrg}{A data frame with the average distance of each training point to every other point}
 #'  \item{trainDist_avrgmean}{The mean of trainDist_avrg. Used for normalizing the DI}
 #'  \item{trainDI}{Dissimilarity Index of the training data}
 #'  \item{threshold}{The DI threshold used for inside/outside AOA}
-#'  \item{lower_threshold}{The lower DI threshold. Currently unused.}
 #'
 #'
 #'
@@ -101,7 +102,9 @@ trainDI <- function(model = NA,
                     variables = "all",
                     weight = NA,
                     CVtest = NULL,
-                    CVtrain = NULL){
+                    CVtrain = NULL,
+                    method="L2",
+                    useWeight=TRUE){
 
   # get parameters if they are not provided in function call-----
   if(is.null(train)){train = aoa_get_train(model)}
@@ -111,11 +114,16 @@ trainDI <- function(model = NA,
     }
   }
   if(is.na(weight)[1]){
-    weight = aoa_get_weights(model, variables = variables)
+    if(useWeight){
+      weight = aoa_get_weights(model, variables = variables)
+    }else{
+      message("variable are not weighted. see ?aoa")
+      weight <- t(data.frame(rep(1,length(variables))))
+      names(weight) <- variables
+    }
   }else{ #check if manually given weights are correct. otherwise ignore (set to 1):
     if(nrow(weight)!=1||ncol(weight)!=length(variables)){
       message("variable weights are not correctly specified and will be ignored. See ?aoa")
-      #weight <- simpleError("error")
       weight <- t(data.frame(rep(1,length(variables))))
       names(weight) <- variables
     }
@@ -168,28 +176,45 @@ trainDI <- function(model = NA,
   trainDist_avrg <- c()
   trainDist_min <- c()
 
+  if(method=="MD"){
+    if(dim(train)[2] == 1){
+      S <- matrix(stats::var(train), 1, 1)
+    } else {
+      S <- stats::cov(train)
+    }
+    S_inv <- MASS::ginv(S)
+  }
+
   for(i in seq(nrow(train))){
 
     # distance to all other training data (for average)
-    trainDistAll <- FNN::knnx.dist(train, t(train[i,]), k = nrow(train))[-1]
+    trainDistAll   <- .alldistfun(t(train[i,]), train,  method, S_inv=S_inv)[-1]
     trainDist_avrg <- append(trainDist_avrg, mean(trainDistAll, na.rm = TRUE))
 
-    # calculate distance to other training data:
-    trainDist <- FNN::knnx.dist(t(matrix(train[i,])),train,k=1)
-    trainDist[i] <- NA
+    # calculate  distance to other training data:
+    trainDist      <- matrix(.alldistfun(t(matrix(train[i,])), train, method, sorted = FALSE, S_inv))
+    trainDist[i]   <- NA
 
 
     # mask of any data that are not used for training for the respective data point (using CV)
+    whichfold <- NA
     if(!is.null(CVtrain)&!is.null(CVtest)){
       whichfold <-  as.numeric(which(lapply(CVtest,function(x){any(x==i)})==TRUE)) # index of the fold where i is held back
-      trainDist[!seq(nrow(train))%in%CVtrain[[whichfold]]] <- NA # everything that is not in the training data for i is ignored
+      if(length(whichfold)!=0){ # in case that a data point is never used for testing
+        trainDist[!seq(nrow(train))%in%CVtrain[[whichfold]]] <- NA # everything that is not in the training data for i is ignored
+      }
+      if(length(whichfold)==0){#in case that a data point is never used for testing, the distances for that point are ignored
+        trainDist <- NA
+      }
     }
 
     #######################################
 
-
-    trainDist_min <- append(trainDist_min, min(trainDist, na.rm = TRUE))
-
+    if (length(whichfold)==0){
+      trainDist_min <- append(trainDist_min, NA)
+    }else{
+      trainDist_min <- append(trainDist_min, min(trainDist, na.rm = TRUE))
+    }
   }
   trainDist_avrgmean <- mean(trainDist_avrg,na.rm=TRUE)
 
@@ -200,8 +225,13 @@ trainDI <- function(model = NA,
 
 
   # AOA Threshold ----
-  thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
-  lower_thres <- grDevices::boxplot.stats(TrainDI)$stats[1]
+  threshold_quantile <- stats::quantile(TrainDI, 0.75,na.rm=TRUE)
+  threshold_iqr <- (1.5 * stats::IQR(TrainDI,na.rm=T))
+  thres <- threshold_quantile + threshold_iqr
+
+  # note: previous versions of CAST derived the threshold this way:
+  #thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
+
 
   # Return: trainDI Object -------
 
@@ -214,8 +244,7 @@ trainDI <- function(model = NA,
     trainDist_avrg = trainDist_avrg,
     trainDist_avrgmean = trainDist_avrgmean,
     trainDI = TrainDI,
-    threshold = thres,
-    lower_threshold = lower_thres
+    threshold = thres
   )
 
   class(aoa_results) = "trainDI"
@@ -273,14 +302,14 @@ aoa_get_weights = function(model, variables){
   }else{
     as.data.frame(t(caret::varImp(model,scale=F)$importance[,"Overall"]))
   }, error=function(e) e)
-  if(!inherits(weight, "error")){
+  if(!inherits(weight, "error") & length(variables)>1){
     names(weight)<- rownames(caret::varImp(model,scale=F)$importance)
   }else{
     # set all weights to 1
     weight <- as.data.frame(t(rep(1, length(variables))))
     names(weight) = variables
     message("note: variables were not weighted either because no weights or model were given,
-    or no variable importance could be retrieved from the given model.
+    no variable importance could be retrieved from the given model, or the model has a single feature.
     Check caret::varImp(model)")
   }
 
@@ -314,7 +343,7 @@ aoa_get_train <- function(model){
 aoa_get_folds <- function(model, CVtrain, CVtest){
   ### if folds are to be extracted from the model:
   if (!is.na(model)[1]){
-    if(model$control$method!="cv"){
+    if(tolower(model$control$method)!="cv"){
       message("note: Either no model was given or no CV was used for model training. The DI threshold is therefore based on all training data")
     }else{
       CVtest <- model$control$indexOut
@@ -324,7 +353,7 @@ aoa_get_folds <- function(model, CVtrain, CVtest){
   ### if folds are specified manually:
   if(is.na(model)[1]){
 
-    if(!is.null(CVtest)&is.vector(CVtest)){ # restructure input if CVtest only contains the fold ID
+    if(!is.null(CVtest)&!is.list(CVtest)){ # restructure input if CVtest only contains the fold ID
       tmp <- list()
       for (i in unique(CVtest)){
         tmp[[i]] <- which(CVtest==i)
@@ -369,3 +398,39 @@ aoa_get_variables <- function(variables, model, train){
 
 
 }
+
+
+
+.mindistfun <- function(point, reference, method, S_inv=NULL){
+
+  if (method == "L2"){ # Euclidean Distance
+    return(c(FNN::knnx.dist(reference, point, k = 1)))
+  } else if (method == "MD"){ # Mahalanobis Distance
+    return(sapply(1:dim(point)[1],
+                  function(y) min(sapply(1:dim(reference)[1],
+                                         function(x) sqrt( t(point[y,] - reference[x,]) %*% S_inv %*% (point[y,] - reference[x,]) )))))
+  }
+}
+
+.alldistfun <- function(point, reference, method, sorted = TRUE,S_inv=NULL){
+
+  if (method == "L2"){ # Euclidean Distance
+    if(sorted){
+      return(FNN::knnx.dist(reference, point, k = dim(reference)[1]))
+    } else {
+      return(FNN::knnx.dist(point,reference,k=1))
+    }
+  } else if (method == "MD"){ # Mahalanobis Distance
+    if(sorted){
+      return(t(sapply(1:dim(point)[1],
+                      function(y) sort(sapply(1:dim(reference)[1],
+                                              function(x) sqrt( t(point[y,] - reference[x,]) %*% S_inv %*% (point[y,] - reference[x,]) ))))))
+    } else {
+      return(t(sapply(1:dim(point)[1],
+                      function(y) sapply(1:dim(reference)[1],
+                                         function(x) sqrt( t(point[y,] - reference[x,]) %*% S_inv %*% (point[y,] - reference[x,]) )))))
+
+    }
+  }
+}
+

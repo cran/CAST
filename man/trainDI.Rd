@@ -10,7 +10,9 @@ trainDI(
   variables = "all",
   weight = NA,
   CVtest = NULL,
-  CVtrain = NULL
+  CVtrain = NULL,
+  method = "L2",
+  useWeight = TRUE
 )
 }
 \arguments{
@@ -30,6 +32,10 @@ Only required if no model is given.}
 \item{CVtrain}{list. Each element contains the data points used for training during the cross validation iteration (i.e. held back data).
 Only required if no model is given and only required if CVtrain is not the opposite of CVtest (i.e. if a data point is not used for testing, it is used for training).
 Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.}
+
+\item{method}{Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.}
+
+\item{useWeight}{Logical. Only if a model is given. Weight variables according to importance in the model?}
 }
 \value{
 A list of class \code{trainDI} containing:
@@ -38,11 +44,10 @@ A list of class \code{trainDI} containing:
  \item{variables}{Names of the used variables}
  \item{catvars}{Which variables are categorial}
  \item{scaleparam}{Scaling parameters. Output from \code{scale}}
- \item{trainDist_avrg}{A data frame with the average eucildean distance of each training point to every other point}
+ \item{trainDist_avrg}{A data frame with the average distance of each training point to every other point}
  \item{trainDist_avrgmean}{The mean of trainDist_avrg. Used for normalizing the DI}
  \item{trainDI}{Dissimilarity Index of the training data}
  \item{threshold}{The DI threshold used for inside/outside AOA}
- \item{lower_threshold}{The lower DI threshold. Currently unused.}
 }
 \description{
 This function estimates the Dissimilarity Index (DI) of

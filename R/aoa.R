@@ -13,7 +13,6 @@
 #' @param model A train object created with caret used to extract weights from (based on variable importance) as well as cross-validation folds.
 #' See examples for the case that no model is available or for models trained via e.g. mlr3.
 #' @param trainDI A trainDI object. Optional if \code{\link{trainDI}} was calculated beforehand.
-#' @param cl A cluster object e.g. created with doParallel. Optional. Should only be used if newdata is large.
 #' @param train A data.frame containing the data used for model training. Optional. Only required when no model is given
 #' @param weight A data.frame containing weights for each variable. Optional. Only required if no model is given.
 #' @param variables character vector of predictor variables. if "all" then all variables
@@ -24,6 +23,8 @@
 #' @param CVtrain list. Each element contains the data points used for training during the cross validation iteration (i.e. held back data).
 #' Only required if no model is given and only required if CVtrain is not the opposite of CVtest (i.e. if a data point is not used for testing, it is used for training).
 #' Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.
+#' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.
+#' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
 #' @details The Dissimilarity Index (DI) and the corresponding Area of Applicability (AOA) are calculated.
 #' If variables are factors, dummy variables are created prior to weighting and distance calculation.
 #'
@@ -90,15 +91,6 @@
 #' spplot(AOA$AOA,col.regions=c("grey","transparent"))
 #'
 #' ####
-#' # Calculating the AOA might be time consuming. Consider running it in parallel:
-#' ####
-#' library(doParallel)
-#' library(parallel)
-#' cl <- makeCluster(4)
-#' registerDoParallel(cl)
-#' AOA <- aoa(studyArea,model,cl=cl)
-#'
-#' ####
 #' #The AOA can also be calculated without a trained model.
 #' #All variables are weighted equally in this case:
 #' ####
@@ -144,16 +136,19 @@
 aoa <- function(newdata,
                 model=NA,
                 trainDI = NA,
-                cl=NULL,
                 train=NULL,
                 weight=NA,
                 variables="all",
                 CVtest=NULL,
-                CVtrain=NULL) {
+                CVtrain=NULL,
+                method="L2",
+                useWeight=TRUE) {
 
   # handling of different raster formats
   as_stars <- FALSE
   as_terra <- FALSE
+  leading_digit <- any(grepl("^{1}[0-9]",names(newdata)))
+
   if (inherits(newdata, "stars")) {
     if (!requireNamespace("stars", quietly = TRUE))
       stop("package stars required: install that first")
@@ -164,6 +159,7 @@ aoa <- function(newdata,
   if (inherits(newdata, "SpatRaster")) {
     if (!requireNamespace("terra", quietly = TRUE))
       stop("package terra required: install that first")
+
     newdata <- methods::as(newdata, "Raster")
     as_terra <- TRUE
   }
@@ -174,7 +170,7 @@ aoa <- function(newdata,
   # if not provided, compute train DI
   if(!inherits(trainDI, "trainDI")){
     message("No trainDI provided. Computing DI of training data...")
-    trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain)
+    trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain,method, useWeight)
   }
 
   message("Computing DI of newdata...")
@@ -182,6 +178,9 @@ aoa <- function(newdata,
 
   # check if variables are in newdata
   if(any(trainDI$variables %in% names(newdata)==FALSE)){
+    if(leading_digit){
+      stop("names of newdata start with leading digits, automatically added 'X' results in mismatching names of train data in the model")
+    }
     stop("names of newdata don't match names of train data in the model")
   }
 
@@ -232,33 +231,36 @@ aoa <- function(newdata,
   if(!inherits(trainDI$weight, "error")){
     newdata <- sapply(1:ncol(newdata),function(x){
       newdata[,x]*unlist(trainDI$weight[x])
-      })
+    })
   }
 
 
   # rescale and reweight train data
   train_scaled <- scale(trainDI$train,
-                       center = trainDI$scaleparam$`scaled:center`,
-                       scale = trainDI$scaleparam$`scaled:scale`)
+                        center = trainDI$scaleparam$`scaled:center`,
+                        scale = trainDI$scaleparam$`scaled:scale`)
 
   train_scaled <- sapply(1:ncol(train_scaled),function(x){train_scaled[,x]*unlist(trainDI$weight[x])})
 
 
   # Distance Calculation ---------
 
-  distfun <- function(x){
-    if(any(is.na(x))){
-      return(NA)
-    }else{
-      tmp <- FNN::knnx.dist(t(matrix(x)), train_scaled, k=1)
-      return(min(tmp))
+  mindist <- rep(NA, nrow(newdata))
+  okrows <- which(apply(newdata, 1, function(x) all(!is.na(x))))
+  newdataCC <- newdata[okrows,]
+
+
+  if(method=="MD"){
+    if(dim(train_scaled)[2] == 1){
+      S <- matrix(stats::var(train_scaled), 1, 1)
+      newdataCC <- as.matrix(newdataCC,ncol=1)
+    } else {
+      S <- stats::cov(train_scaled)
     }
+    S_inv <- MASS::ginv(S)
   }
-  if (!is.null(cl)){
-    mindist <- parallel::parApply(cl=cl,X=newdata,MARGIN=1,FUN=distfun)
-  }else{
-    mindist <- apply(newdata,1,FUN=distfun)
-  }
+
+  mindist[okrows] <- .mindistfun(newdataCC, train_scaled, method, S_inv)
 
 
   DI_out <- mindist/trainDI$trainDist_avrgmean
@@ -295,16 +297,16 @@ aoa <- function(newdata,
 
   # used in old versions of the AOA. eventually remove the attributes
   attributes(AOA)$aoa_stats <- list("Mean_train" = trainDI$trainDist_avrgmean,
-                                    "threshold_stats" = trainDI$AOA_train_stats,
-                                    "threshold" = trainDI$thres,
-                                    "lower_threshold" = trainDI$lower_thres)
+                                    "threshold" = trainDI$thres)
   attributes(AOA)$TrainDI <- trainDI$trainDI
 
   result <- list(parameters = trainDI,
-                DI = out,
-                AOA = AOA)
+                 DI = out,
+                 AOA = AOA)
 
   class(result) <- "aoa"
   return(result)
 
 }
+
+

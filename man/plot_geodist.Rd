@@ -26,7 +26,8 @@ plot_geodist(
 
 \item{type}{"geo" or "feature". Should the distance be computed in geographic space or in the normalized multivariate predictor space (see Details)}
 
-\item{cvfolds}{optional. List of row indices of x that are held back in each CV iteration. See e.g. ?createFolds or ?createSpaceTimeFolds}
+\item{cvfolds}{optional. list or vector. Either a list where each element contains the data points used for testing during the cross validation iteration (i.e. held back data).
+Or a vector that contains the ID of the fold for each training point. See e.g. ?createFolds or ?CreateSpacetimeFolds or ?nndm}
 
 \item{cvtrain}{optional. List of row indices of x to fit the model to in each CV iteration. If cvtrain is null but cvfolds is not, all samples but those included in cvfolds are used as training data}
 
@@ -40,7 +41,7 @@ plot_geodist(
 
 \item{unit}{character. Only if type=="geo" and only applied to the plot. Supported: "m" or "km".}
 
-\item{stat}{"density" for density plot or "ecdf" for cumulative plot.}
+\item{stat}{"density" for density plot or "ecdf" for empirical cumulative distribution function plot.}
 
 \item{showPlot}{logical}
 }
@@ -64,6 +65,7 @@ See Meyer and Pebesma (2022) for an application of this plotting function
 \dontrun{
 library(sf)
 library(raster)
+library(terra)
 library(caret)
 
 ########### prepare sample data:
@@ -89,7 +91,11 @@ folds <- createFolds(1:nrow(pts_train),k=3,returnTrain=FALSE)
 dist <- plot_geodist(x=pts_train, modeldomain=studyArea, cvfolds=folds)
 
 ## or use nndm to define folds
-nndm_pred <- nndm(pts_train, studyArea)
+AOI <- as.polygons(rast(studyArea), values = F) |>
+  st_as_sf() |>
+  st_union() |>
+  st_transform(crs = st_crs(pts_train))
+nndm_pred <- nndm(pts_train, AOI)
 dist <- plot_geodist(x=pts_train, modeldomain=studyArea,
     cvfolds=nndm_pred$indx_test, cvtrain=nndm_pred$indx_train)
 
@@ -114,7 +120,7 @@ co.ee <- st_transform(co, ee)
 ### Simulate a spatial random sample
 ### (alternatively replace pts_random by a real sampling dataset (see Meyer and Pebesma 2022):
 sf_use_s2(FALSE)
-pts_random <- st_sample(co, 2000)
+pts_random <- st_sample(co.ee, 2000, exact=FALSE)
 
 ### See points on the map:
 ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
@@ -123,7 +129,7 @@ ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
      labs(x = NULL, y = NULL)
 
 ### plot distances:
-dist <- plot_geodist(pts_random,co,showPlot=FALSE)
+dist <- plot_geodist(pts_random,co.ee,showPlot=FALSE)
 dist$plot+scale_x_log10(labels=round)
 }
 }

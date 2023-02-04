@@ -7,14 +7,15 @@
 #' @param x object of class sf, training data locations
 #' @param modeldomain raster or sf object defining the prediction area (see Details)
 #' @param type "geo" or "feature". Should the distance be computed in geographic space or in the normalized multivariate predictor space (see Details)
-#' @param cvfolds optional. List of row indices of x that are held back in each CV iteration. See e.g. ?createFolds or ?createSpaceTimeFolds
+#' @param cvfolds optional. list or vector. Either a list where each element contains the data points used for testing during the cross validation iteration (i.e. held back data).
+#' Or a vector that contains the ID of the fold for each training point. See e.g. ?createFolds or ?CreateSpacetimeFolds or ?nndm
 #' @param cvtrain optional. List of row indices of x to fit the model to in each CV iteration. If cvtrain is null but cvfolds is not, all samples but those included in cvfolds are used as training data
 #' @param testdata optional. object of class sf: Data used for independent validation
 #' @param samplesize numeric. How many prediction samples should be used?
 #' @param sampling character. How to draw prediction samples? See \link[sp]{spsample}. Use sampling = "Fibonacci" for global applications.
 #' @param variables character vector defining the predictor variables used if type="feature. If not provided all variables included in modeldomain are used.
 #' @param unit character. Only if type=="geo" and only applied to the plot. Supported: "m" or "km".
-#' @param stat "density" for density plot or "ecdf" for cumulative plot.
+#' @param stat "density" for density plot or "ecdf" for empirical cumulative distribution function plot.
 #' @param showPlot logical
 #' @return A list including the plot and the corresponding data.frame containing the distances. Unit of returned geographic distances is meters.
 #' @details The modeldomain is a sf polygon or a raster that defines the prediction area. The function takes a regular point sample (amount defined by samplesize) from the spatial extent.
@@ -28,6 +29,7 @@
 #' \dontrun{
 #' library(sf)
 #' library(raster)
+#' library(terra)
 #' library(caret)
 #'
 #' ########### prepare sample data:
@@ -53,7 +55,11 @@
 #' dist <- plot_geodist(x=pts_train, modeldomain=studyArea, cvfolds=folds)
 #'
 #' ## or use nndm to define folds
-#' nndm_pred <- nndm(pts_train, studyArea)
+#' AOI <- as.polygons(rast(studyArea), values = F) |>
+#'   st_as_sf() |>
+#'   st_union() |>
+#'   st_transform(crs = st_crs(pts_train))
+#' nndm_pred <- nndm(pts_train, AOI)
 #' dist <- plot_geodist(x=pts_train, modeldomain=studyArea,
 #'     cvfolds=nndm_pred$indx_test, cvtrain=nndm_pred$indx_train)
 #'
@@ -78,7 +84,7 @@
 #'### Simulate a spatial random sample
 #'### (alternatively replace pts_random by a real sampling dataset (see Meyer and Pebesma 2022):
 #'sf_use_s2(FALSE)
-#'pts_random <- st_sample(co, 2000)
+#'pts_random <- st_sample(co.ee, 2000, exact=FALSE)
 #'
 #'### See points on the map:
 #'ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
@@ -87,7 +93,7 @@
 #'      labs(x = NULL, y = NULL)
 #'
 #'### plot distances:
-#'dist <- plot_geodist(pts_random,co,showPlot=FALSE)
+#'dist <- plot_geodist(pts_random,co.ee,showPlot=FALSE)
 #'dist$plot+scale_x_log10(labels=round)
 #'}
 #' @export
@@ -305,6 +311,15 @@ sample2test <- function(x, testdata, type,variables){
 
 cvdistance <- function(x, cvfolds, cvtrain, type, variables){
 
+  if(!is.null(cvfolds)&!is.list(cvfolds)){ # restructure input if CVtest only contains the fold ID
+    tmp <- list()
+    for (i in unique(cvfolds)){
+      tmp[[i]] <- which(cvfolds==i)
+    }
+    cvfolds <- tmp
+  }
+
+
   if(type == "geo"){
     d_cv <- c()
     for (i in 1:length(cvfolds)){
@@ -376,12 +391,21 @@ sampleFromArea <- function(modeldomain, samplesize, type,variables,sampling){
   # regularly spread points (prediction locations):
   # see https://edzer.github.io/OGH21/
   if(inherits(modeldomain, "Raster")){
-    if(samplesize>raster::ncell(modeldomain)){
-      samplesize <- raster::ncell(modeldomain)
+    modeldomain <- terra::rast(modeldomain)
+  }
+
+  if(inherits(modeldomain, "SpatRaster")) {
+    if(samplesize>terra::ncell(modeldomain)){
+      samplesize <- terra::ncell(modeldomain)
       message(paste0("samplesize for new data shouldn't be larger than number of pixels.
-              Samplesize was reduced to ",raster::ncell(modeldomain)))
+              Samplesize was reduced to ",terra::ncell(modeldomain)))
     }
-    modeldomainextent <- sf::st_as_sf(sf::st_as_sfc(sf::st_bbox(modeldomain)))
+    #create mask to sample from:
+    template <- modeldomain[[1]]
+    terra::values(template)[!is.na(terra::values(template))] <-1
+    modeldomainextent <- terra::as.polygons(template) |>
+      sf::st_as_sf() |>
+      sf::st_geometry()
   }else{
     modeldomainextent <- modeldomain
   }
@@ -390,7 +414,7 @@ sampleFromArea <- function(modeldomain, samplesize, type,variables,sampling){
   sf::st_as_sf(modeldomainextent) |>
     sf::st_transform(4326) -> bb
   methods::as(bb, "Spatial") |>
-    sp::spsample(n =samplesize, type = sampling)  |>
+    sp::spsample(n = samplesize, type = sampling)  |>
     sf::st_as_sfc() |>
     sf::st_set_crs(4326) -> predictionloc
 
@@ -399,7 +423,8 @@ sampleFromArea <- function(modeldomain, samplesize, type,variables,sampling){
 
 
   if(type == "feature"){
-    predictionloc <- sf::st_as_sf(raster::extract(modeldomain, predictionloc, df = TRUE, sp = TRUE))
+    modeldomain <- terra::project(modeldomain, "epsg:4326")
+    predictionloc <- sf::st_as_sf(terra::extract(modeldomain,terra::vect(predictionloc),bind=TRUE))
     predictionloc <- na.omit(predictionloc)
   }
 
@@ -420,10 +445,23 @@ plot.nnd = function(x,type,unit,stat){
   if( type=="feature"){ xlabs <- "feature space distances"}
   what <- "" #just to avoid check note
   if (type=="feature"){unit ="unitless"}
-  p <- ggplot2::ggplot(data=x, aes(x=dist, group=what, fill=what)) +
-    ggplot2::geom_density(adjust=1.5, alpha=.4, stat=stat) +
-    ggplot2::scale_fill_discrete(name = "distance function") +
-    ggplot2::xlab(xlabs) +
-    ggplot2::theme(legend.position="bottom",
-                   plot.margin = unit(c(0,0.5,0,0),"cm"))
+  if(stat=="density"){
+    p <- ggplot2::ggplot(data=x, aes(x=dist, group=what, fill=what)) +
+      ggplot2::geom_density(adjust=1.5, alpha=.4, stat=stat) +
+      ggplot2::scale_fill_discrete(name = "distance function") +
+      ggplot2::xlab(xlabs) +
+      ggplot2::theme(legend.position="bottom",
+                     plot.margin = unit(c(0,0.5,0,0),"cm"))
+  }else if(stat=="ecdf"){
+    p <- ggplot2::ggplot(data=x, aes(x=dist, group=what, col=what)) +
+      ggplot2::geom_vline(xintercept=0, lwd = 0.1) +
+      ggplot2::geom_hline(yintercept=0, lwd = 0.1) +
+      ggplot2::geom_hline(yintercept=1, lwd = 0.1) +
+      ggplot2::stat_ecdf(geom = "step", lwd = 1) +
+      ggplot2::scale_color_discrete(name = "distance function") +
+      ggplot2::xlab(xlabs) +
+      ggplot2::ylab("ECDF") +
+      ggplot2::theme(legend.position="bottom",
+                     plot.margin = unit(c(0,0.5,0,0),"cm"))
+  }
 }

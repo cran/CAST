@@ -8,12 +8,13 @@ aoa(
   newdata,
   model = NA,
   trainDI = NA,
-  cl = NULL,
   train = NULL,
   weight = NA,
   variables = "all",
   CVtest = NULL,
-  CVtrain = NULL
+  CVtrain = NULL,
+  method = "L2",
+  useWeight = TRUE
 )
 }
 \arguments{
@@ -24,8 +25,6 @@ the model was meant to make predictions for.}
 See examples for the case that no model is available or for models trained via e.g. mlr3.}
 
 \item{trainDI}{A trainDI object. Optional if \code{\link{trainDI}} was calculated beforehand.}
-
-\item{cl}{A cluster object e.g. created with doParallel. Optional. Should only be used if newdata is large.}
 
 \item{train}{A data.frame containing the data used for model training. Optional. Only required when no model is given}
 
@@ -41,6 +40,10 @@ Only required if no model is given.}
 \item{CVtrain}{list. Each element contains the data points used for training during the cross validation iteration (i.e. held back data).
 Only required if no model is given and only required if CVtrain is not the opposite of CVtest (i.e. if a data point is not used for testing, it is used for training).
 Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.}
+
+\item{method}{Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.}
+
+\item{useWeight}{Logical. Only if a model is given. Weight variables according to importance in the model?}
 }
 \value{
 An object of class \code{aoa} containing:
@@ -115,15 +118,6 @@ spplot(AOA$DI, col.regions=viridis(100),main="Dissimilarity Index")
 #plot predictions for the AOA only:
 spplot(prediction, col.regions=viridis(100),main="prediction for the AOA")+
 spplot(AOA$AOA,col.regions=c("grey","transparent"))
-
-####
-# Calculating the AOA might be time consuming. Consider running it in parallel:
-####
-library(doParallel)
-library(parallel)
-cl <- makeCluster(4)
-registerDoParallel(cl)
-AOA <- aoa(studyArea,model,cl=cl)
 
 ####
 #The AOA can also be calculated without a trained model.

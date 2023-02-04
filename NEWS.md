@@ -1,3 +1,14 @@
+# `CAST` 0.7.1
+* new features:
+  * Mahalanobis distance for AOA assessment as option
+* modifications:
+  * faster estimation of the AOA
+  * parallel option for AOA deprecated (see vignette)
+    * delineation of the default threshold fixed as suggested in github.com/HannaMeyer/CAST/issues/46
+* bugfix:
+  * fixed issue github.com/ropensci/rnaturalearth/issues/69
+  
+
 # `CAST` 0.7.0
 * new feature: 
   * nndm cross-validation as suggested by Milà et al. (2022)

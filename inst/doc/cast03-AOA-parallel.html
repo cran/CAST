@@ -12,7 +12,7 @@
 
 <meta name="author" content="Marvin Ludwig" />
 
-<meta name="date" content="2022-08-24" />
+<meta name="date" content="2023-02-04" />
 
 <title>3. AOA in Parallel</title>
 
@@ -31,23 +31,23 @@ document.addEventListener('DOMContentLoaded', function(e) {
 </script>
 
 <style type="text/css">
-  code{white-space: pre-wrap;}
-  span.smallcaps{font-variant: small-caps;}
-  span.underline{text-decoration: underline;}
-  div.column{display: inline-block; vertical-align: top; width: 50%;}
-  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-  ul.task-list{list-style: none;}
-    </style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
 
 
 
 <style type="text/css">
-  code {
-    white-space: pre;
-  }
-  .sourceCode {
-    overflow: visible;
-  }
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
 </style>
 <style type="text/css" data-origin="pandoc">
 pre > code.sourceCode { white-space: pre; position: relative; }
@@ -65,55 +65,54 @@ pre > code.sourceCode { white-space: pre-wrap; }
 pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
-  { counter-reset: source-line 0; }
+{ counter-reset: source-line 0; }
 pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
+{ position: relative; left: -4em; counter-increment: source-line; }
 pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-    color: #aaaaaa;
-  }
-pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
 div.sourceCode
-  {   }
+{ }
 @media screen {
 pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-code span.al { color: #ff0000; font-weight: bold; } /* Alert */
-code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
-code span.at { color: #7d9029; } /* Attribute */
-code span.bn { color: #40a070; } /* BaseN */
-code span.bu { } /* BuiltIn */
-code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
-code span.ch { color: #4070a0; } /* Char */
-code span.cn { color: #880000; } /* Constant */
-code span.co { color: #60a0b0; font-style: italic; } /* Comment */
-code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
-code span.do { color: #ba2121; font-style: italic; } /* Documentation */
-code span.dt { color: #902000; } /* DataType */
-code span.dv { color: #40a070; } /* DecVal */
-code span.er { color: #ff0000; font-weight: bold; } /* Error */
-code span.ex { } /* Extension */
-code span.fl { color: #40a070; } /* Float */
-code span.fu { color: #06287e; } /* Function */
-code span.im { } /* Import */
-code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
-code span.kw { color: #007020; font-weight: bold; } /* Keyword */
-code span.op { color: #666666; } /* Operator */
-code span.ot { color: #007020; } /* Other */
-code span.pp { color: #bc7a00; } /* Preprocessor */
-code span.sc { color: #4070a0; } /* SpecialChar */
-code span.ss { color: #bb6688; } /* SpecialString */
-code span.st { color: #4070a0; } /* String */
-code span.va { color: #19177c; } /* Variable */
-code span.vs { color: #4070a0; } /* VerbatimString */
-code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
-
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
 </style>
 <script>
 // apply pandoc div.sourceCode style to pre.sourceCode instead
@@ -334,18 +333,14 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">3. AOA in Parallel</h1>
 <h4 class="author">Marvin Ludwig</h4>
-<h4 class="date">2022-08-24</h4>
+<h4 class="date">2023-02-04</h4>
 
 
 <div id="TOC">
 <ul>
 <li><a href="#generate-example-data" id="toc-generate-example-data">Generate Example Data</a></li>
-<li><a href="#parallel-aoa-1-providing-a-cluster" id="toc-parallel-aoa-1-providing-a-cluster">Parallel AOA 1: Providing a
-Cluster</a></li>
-<li><a href="#parallel-aoa-2-divide-and-conquer" id="toc-parallel-aoa-2-divide-and-conquer">Parallel AOA 2: Divide and
-Conquer</a></li>
-<li><a href="#final-remarks" id="toc-final-remarks">Final
-Remarks</a></li>
+<li><a href="#parallel-aoa-by-dividing-the-new-data" id="toc-parallel-aoa-by-dividing-the-new-data">Parallel AOA by dividing
+the new data</a></li>
 </ul>
 </div>
 
@@ -411,88 +406,67 @@ generation.</p>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>               <span class="at">trControl =</span> <span class="fu">trainControl</span>(<span class="at">method=</span><span class="st">&quot;cv&quot;</span>))</span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>prediction_random <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">predict</span>(predictors,model_random)</span></code></pre></div>
 </div>
-<div id="parallel-aoa-1-providing-a-cluster" class="section level1">
-<h1>Parallel AOA 1: Providing a Cluster</h1>
-<p>The simplest methods to compute the AOA in parallel is by providing a
-<code>cluster</code> object in the function call. This way the distance
-calculation between training data and new data will run on multiple
-cores (utilizing <code>parallel::parApply</code>). This is recommended
-if the training set is relatively small but new locations for which the
-AOA should be computed are abundant.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(doParallel)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(parallel)</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">makeCluster</span>(<span class="dv">4</span>)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="fu">registerDoParallel</span>(cl)</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>AOA <span class="ot">&lt;-</span> <span class="fu">aoa</span>(studyArea,model,<span class="at">cl=</span>cl)</span></code></pre></div>
-</div>
-<div id="parallel-aoa-2-divide-and-conquer" class="section level1">
-<h1>Parallel AOA 2: Divide and Conquer</h1>
-<p>For even better performances, it is recommended to compute the AOA in
-two steps. First, the DI of training data and the resulting DI threshold
-is computed from the model or training data with the function
+<div id="parallel-aoa-by-dividing-the-new-data" class="section level1">
+<h1>Parallel AOA by dividing the new data</h1>
+<p>For better performances, it is recommended to compute the AOA in two
+steps. First, the DI of training data and the resulting DI threshold is
+computed from the model or training data with the function
 <code>trainDI</code>. The result from trainDI is usually the first step
 of the <code>aoa</code> function, however it can be skipped by providing
 the trainDI object in the function call. This makes it possible to
 compute the AOA on multiple raster tiles at once (e.g. on different
 cores). This is especially useful for very large prediction areas,
 e.g. in global mapping.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>model_random_trainDI <span class="ot">=</span> <span class="fu">trainDI</span>(model_random)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(model_random_trainDI)</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>model_random_trainDI <span class="ot">=</span> <span class="fu">trainDI</span>(model_random)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(model_random_trainDI)</span></code></pre></div>
 <pre><code>## DI of 74 observation 
 ## Predictors: bio2 bio5 bio10 bio13 bio14 bio19 
 ## 
-## AOA Threshold: 0.09237258</code></pre>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(model_random_trainDI, <span class="st">&quot;path/to/file&quot;</span>)</span></code></pre></div>
+## AOA Threshold: 0.1237655</code></pre>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(model_random_trainDI, <span class="st">&quot;path/to/file&quot;</span>)</span></code></pre></div>
 <p>If you have a large raster, you divide it into multiple smaller tiles
 and apply the trainDI object afterwards to each tile.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>r1 <span class="ot">=</span> <span class="fu">crop</span>(predictors, <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">7</span>,<span class="fl">42.33333</span>,<span class="fl">54.83333</span>))</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>r2 <span class="ot">=</span> <span class="fu">crop</span>(predictors, <span class="fu">c</span>(<span class="dv">7</span>,<span class="dv">14</span>,<span class="fl">42.33333</span>,<span class="fl">54.83333</span>))</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>r3 <span class="ot">=</span> <span class="fu">crop</span>(predictors, <span class="fu">c</span>(<span class="dv">14</span>,<span class="dv">21</span>,<span class="fl">42.33333</span>,<span class="fl">54.83333</span>))</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="fu">grid.arrange</span>(<span class="fu">spplot</span>(r1[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 1&quot;</span>),</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(r2[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 2&quot;</span>),</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(r3[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 3&quot;</span>), <span class="at">ncol =</span> <span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>r1 <span class="ot">=</span> <span class="fu">crop</span>(predictors, <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">7</span>,<span class="fl">42.33333</span>,<span class="fl">54.83333</span>))</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>r2 <span class="ot">=</span> <span class="fu">crop</span>(predictors, <span class="fu">c</span>(<span class="dv">7</span>,<span class="dv">14</span>,<span class="fl">42.33333</span>,<span class="fl">54.83333</span>))</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>r3 <span class="ot">=</span> <span class="fu">crop</span>(predictors, <span class="fu">c</span>(<span class="dv">14</span>,<span class="dv">21</span>,<span class="fl">42.33333</span>,<span class="fl">54.83333</span>))</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="fu">grid.arrange</span>(<span class="fu">spplot</span>(r1[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 1&quot;</span>),</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(r2[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 2&quot;</span>),</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(r3[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 3&quot;</span>), <span class="at">ncol =</span> <span class="dv">3</span>)</span></code></pre></div>
 <p><img src="data:image/png;base64,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" /><!-- --></p>
 <p>Use the <code>trainDI</code> argument in the <code>aoa</code>
 function to specify, that you want to use a previously computed trainDI
 object.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>aoa_r1 <span class="ot">=</span> <span class="fu">aoa</span>(<span class="at">newdata =</span> r1, <span class="at">trainDI =</span> model_random_trainDI)</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="fu">grid.arrange</span>(<span class="fu">spplot</span>(r1[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 1: Predictors&quot;</span>),</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(aoa_r1<span class="sc">$</span>DI, <span class="at">main =</span> <span class="st">&quot;Tile 1: DI&quot;</span>),</span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(aoa_r1<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 1: AOA&quot;</span>), <span class="at">ncol =</span> <span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>aoa_r1 <span class="ot">=</span> <span class="fu">aoa</span>(<span class="at">newdata =</span> r1, <span class="at">trainDI =</span> model_random_trainDI)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="fu">grid.arrange</span>(<span class="fu">spplot</span>(r1[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">&quot;Tile 1: Predictors&quot;</span>),</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(aoa_r1<span class="sc">$</span>DI, <span class="at">main =</span> <span class="st">&quot;Tile 1: DI&quot;</span>),</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(aoa_r1<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 1: AOA&quot;</span>), <span class="at">ncol =</span> <span class="dv">3</span>)</span></code></pre></div>
 <p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAIAAACb4TnXAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAWX0lEQVR4nO3de1RU5foH8GeGEZE7CoKKQqKEJSkkXs5BiNWBRF2Z6DHy4LLjQZBUCuO0tI5LMXN14Rw17wGnVstMUqHVAcVEyrx0UMkbpFxEJFIMEoThJ8gw+/fHu9przgxsbvPgpe9n+cfMO+9+994vfme/+2V4RyVJEgEAD/X9PgCARxkCBsAIAQNghIABMELAABghYACMEDAARggYACMEDIARAgbACAEDYISAATBCwAAYIWAAjBAwAEYIGAAjBAyAEQIGwAgBA2CEgAEwQsAAGCFgAIwQMABGCBgAIwQMgBECBsAIAQNghIABMELAABghYACMEDAARggYACMEDIARAgbACAEDYISAATBCwAAYIWAAjBAwAEYIGAAjBAyAEQIGwAgBA2CEgAEwQsAAGCFgAIwQMABGCBgAIwQMgBECBsAIAQNghIABMELAABghYACMEDAARggYACMEDIARAgbACAEDYISAATBCwAAYIWAAjBAwAEYIGAAjBAyAEQIGwAgBA2CEgAEwQsAAGCFgAIwQMABGCBgAIwQMgBECBsAIAQNghIABMELAABghYACMEDAARggYACMEDIARAgbACAEDYISAATBCwAAYIWAAjBAwAEYIGAAjBAyAEQIGwAgBA2CEgAEwQsAAGCFgAIwQMABGCBgAIwQMgBECBsAIAQNghIABMELAABghYACMEDAARggYACMEDIARAgbACAEDYISAATBCwAAYIWAAjBAwAEYIWM+FhoaqFL3zzjtEFB4erlKpBgwYILYyetobO3bsWLx4cUlJSbe2WrVqldFxWltbjxw5MiYmpqamxrBmQECAqPDrr7+atvOQnr6h6dOni0P19fXtqE5OTs7ChQvHjx9va2s7bty4BQsWpKenS5LU1QYl6Kk//elPyj+/9evXS5I0bdo0IrKyshJbGT3tsXPnzllZWRHRt99+260NV65c2dEBu7q6Hj9+XK45YcIEUV5bW2vazkN6+rJffvlFo9HIR3vp0iWjCk1NTXFxce2eWnh4eGNjY1ca1LS7PXTFq6++OnfuXPE4KysrKyuLiKKiogIDA0VhQEAAES1fvvyFF16wsLAwy07LyspKSkpyc3NTUlKam5t709Rf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" /><!-- --></p>
 <p>You can now run the aoa function in parallel on the different tiles!
 Of course you can use for favorite parallel backend for this task, here
 we use mclapply from the <code>parallel</code> package.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(parallel)</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>tiles_aoa <span class="ot">=</span> <span class="fu">mclapply</span>(<span class="fu">list</span>(r1, r2, r3), <span class="cf">function</span>(tile){</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">aoa</span>(<span class="at">newdata =</span> tile, <span class="at">trainDI =</span> model_random_trainDI)</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>}, <span class="at">mc.cores =</span> <span class="dv">3</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">grid.arrange</span>(<span class="fu">spplot</span>(tiles_aoa[[<span class="dv">1</span>]]<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 1&quot;</span>),</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(tiles_aoa[[<span class="dv">2</span>]]<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 2&quot;</span>),</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(tiles_aoa[[<span class="dv">3</span>]]<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 3&quot;</span>), <span class="at">ncol =</span> <span class="dv">3</span>)</span></code></pre></div>
-<p><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(parallel)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>tiles_aoa <span class="ot">=</span> <span class="fu">mclapply</span>(<span class="fu">list</span>(r1, r2, r3), <span class="cf">function</span>(tile){</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">aoa</span>(<span class="at">newdata =</span> tile, <span class="at">trainDI =</span> model_random_trainDI)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>}, <span class="at">mc.cores =</span> <span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">grid.arrange</span>(<span class="fu">spplot</span>(tiles_aoa[[<span class="dv">1</span>]]<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 1&quot;</span>),</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(tiles_aoa[[<span class="dv">2</span>]]<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 2&quot;</span>),</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>             <span class="fu">spplot</span>(tiles_aoa[[<span class="dv">3</span>]]<span class="sc">$</span>AOA, <span class="at">main =</span> <span class="st">&quot;Tile 3&quot;</span>), <span class="at">ncol =</span> <span class="dv">3</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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71ge0Fq9Xw7QBpuVatO+3+RebehMusa8VHQs8wbW6v1ygNbfpFQb9/0x+dDk3JspDxQdy7yB2uz/nc1+6hPFLQtPtNZZP9+66xXOfZ9otZySe3P6TUXHNZR7Irddbfcbs9nP6KVGe/dfR5xwb9FxDQ2a/YxerL4yuiv5fe9FRcfsGrj9rF7Nj2/puv2Q35P5b+WP2TZg+1kBdRw/enJufN9b88dsG7B9fx8ECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBAkECQQJBP0Dv13LMLklAvQAAAAASUVORK5CYII=" /><!-- --></p>
 <p>For larger tasks it might be useful to save the tiles to you
 hard-drive and load them one by one to avoid filling up your RAM.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Simple Example Code for raster tiles on the hard drive</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>tiles <span class="ot">=</span> <span class="fu">list.files</span>(<span class="st">&quot;path/to/tiles&quot;</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>tiles_aoa <span class="ot">=</span> <span class="fu">mclapply</span>(tiles, <span class="cf">function</span>(tile){</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  current <span class="ot">=</span> raster<span class="sc">::</span><span class="fu">stack</span>(tile)</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">aoa</span>(<span class="at">newdata =</span> current, <span class="at">trainDI =</span> model_random_trainDI)</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>}, <span class="at">mc.cores =</span> <span class="dv">3</span>)</span></code></pre></div>
-</div>
-<div id="final-remarks" class="section level1">
-<h1>Final Remarks</h1>
-<p>It should be possible to combine both parallelization methods! For
-example on a High Performance Cluster, multiple raster tiles can be
-handled by different nodes and then, each node computes the distance
-between prediction and training data on multiple cores.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Simple Example Code for raster tiles on the hard drive</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>tiles <span class="ot">=</span> <span class="fu">list.files</span>(<span class="st">&quot;path/to/tiles&quot;</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>tiles_aoa <span class="ot">=</span> <span class="fu">mclapply</span>(tiles, <span class="cf">function</span>(tile){</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  current <span class="ot">=</span> raster<span class="sc">::</span><span class="fu">stack</span>(tile)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">aoa</span>(<span class="at">newdata =</span> current, <span class="at">trainDI =</span> model_random_trainDI)</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>}, <span class="at">mc.cores =</span> <span class="dv">3</span>)</span></code></pre></div>
 </div>
 
 

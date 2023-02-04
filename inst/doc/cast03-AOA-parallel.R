@@ -58,13 +58,6 @@ model_random <- train(trainDat[,names(predictors)],
                trControl = trainControl(method="cv"))
 prediction_random <- raster::predict(predictors,model_random)
 
-## ---- eval = FALSE------------------------------------------------------------
-#  library(doParallel)
-#  library(parallel)
-#  cl <- makeCluster(4)
-#  registerDoParallel(cl)
-#  AOA <- aoa(studyArea,model,cl=cl)
-
 ## -----------------------------------------------------------------------------
 model_random_trainDI = trainDI(model_random)
 print(model_random_trainDI)

@@ -55,7 +55,8 @@
 #' \itemize{
 #' \item Gasch, C.K., Hengl, T., Gräler, B., Meyer, H., Magney, T., Brown, D.J. (2015): Spatio-temporal interpolation of soil water, temperature, and electrical conductivity in 3D+T: the Cook Agronomy Farm data set. Spatial Statistics 14: 70-90.
 #' \item Meyer, H., Reudenbach, C., Hengl, T., Katurji, M., Nauß, T. (2018): Improving performance of spatio-temporal machine learning models using forward feature selection and target-oriented validation. Environmental Modelling & Software 101: 1-9.  \doi{10.1016/j.envsoft.2017.12.001}
-#' \item Meyer, H., Reudenbach, C., Wöllauer, S., Nauss, T. (2019): Importance of spatial predictor variable selection in machine learning applications - Moving from data reproduction to spatial prediction. Ecological Modelling. 411, 108815. \doi{10.1016/j.ecolmodel.2019.108815}
+#' \item Meyer, H., Reudenbach, C., Wöllauer, S., Nauss, T. (2019): Importance of spatial predictor variable selection in machine learning applications - Moving from data reproduction to spatial prediction. Ecological Modelling. 411, 108815. \doi{10.1016/j.ecolmodel.2019.108815}.
+#' \item Ludwig, M., Moreno-Martinez, A., Hölzel, N., Pebesma, E., Meyer, H. (2023): Assessing and improving the transferability of current global spatial prediction models. Global Ecology and Biogeography. \doi{10.1111/geb.13635}.
 #' }
 #' @examples
 #' \dontrun{
@@ -73,6 +74,7 @@
 #' \dontrun{
 #' #run the model on three cores:
 #' library(doParallel)
+#' library(lubridate)
 #' cl <- makeCluster(3)
 #' registerDoParallel(cl)
 #'
@@ -173,6 +175,7 @@ ffs <- function (predictors,
     set.seed(seed)
     #adaptations for pls:
     tuneGrid_orig <- tuneGrid
+    tuneLength_orig <- tuneLength
     if(method=="pls"&!is.null(tuneGrid)&any(tuneGrid$ncomp>minVar)){
       tuneGrid <- data.frame(ncomp=tuneGrid[tuneGrid$ncomp<=minVar,])
       if(verbose){
@@ -186,9 +189,13 @@ ffs <- function (predictors,
         print("invalid value for mtry. Reset to valid range.")
       }
     }
+    # adaptations for RF and minVar == 1 - tuneLength must be 1, only one mtry possible
+    if(minVar==1 & method%in%c("ranger", "rf") & is.null(tuneGrid)){
+      tuneLength <- minVar
+    }
 
     #train model:
-    model <- caret::train(predictors[,minGrid[i,]],
+    model <- caret::train(predictors[minGrid[i,]],
                           response,
                           method=method,
                           metric=metric,
@@ -198,6 +205,7 @@ ffs <- function (predictors,
                           ...)
 
     tuneGrid <- tuneGrid_orig
+    tuneLength <- tuneLength_orig
 
     ### compare the model with the currently best model
     if (globalval){
@@ -290,8 +298,6 @@ ffs <- function (predictors,
           print("invalid value for mtry. Reset to valid range.")
         }
       }
-
-
 
       model <- caret::train(predictors[,c(startvars,nextvars[i])],
                             response,
