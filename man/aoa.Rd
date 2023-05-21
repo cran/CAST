@@ -18,7 +18,7 @@ aoa(
 )
 }
 \arguments{
-\item{newdata}{A RasterStack, RasterBrick, stars object, SpatRaster or data.frame containing the data
+\item{newdata}{A SpatRaster, stars object or data.frame containing the data
 the model was meant to make predictions for.}
 
 \item{model}{A train object created with caret used to extract weights from (based on variable importance) as well as cross-validation folds.
@@ -48,14 +48,14 @@ Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.}
 \value{
 An object of class \code{aoa} containing:
  \item{parameters}{object of class trainDI. see \code{\link{trainDI}}}
- \item{DI}{raster or data frame. Dissimilarity index of newdata}
- \item{AOA}{raster or data frame. Area of Applicability of newdata.
+ \item{DI}{SpatRaster, stars object or data frame. Dissimilarity index of newdata}
+ \item{AOA}{SpatRaster, stars object or data frame. Area of Applicability of newdata.
   AOA has values 0 (outside AOA) and 1 (inside AOA)}
 }
 \description{
 This function estimates the Dissimilarity Index (DI) and the derived
 Area of Applicability (AOA) of spatial prediction models by
-considering the distance of new data (i.e. a Raster Stack of spatial predictors
+considering the distance of new data (i.e. a SpatRaster of spatial predictors
 used in the models) in the predictor variable space to the data used for model
 training. Predictors can be weighted based on the internal
 variable importance of the machine learning algorithm used for model training.
@@ -80,7 +80,7 @@ Will be fixed.
 \examples{
 \dontrun{
 library(sf)
-library(raster)
+library(terra)
 library(caret)
 library(viridis)
 library(latticeExtra)
@@ -92,12 +92,12 @@ pts <- st_as_sf(dat,coords=c("Easting","Northing"))
 pts$ID <- 1:nrow(pts)
 set.seed(100)
 pts <- pts[1:30,]
-studyArea <- stack(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))[[1:8]]
-trainDat <- extract(studyArea,pts,df=TRUE)
+studyArea <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))[[1:8]]
+trainDat <- extract(studyArea,pts,na.rm=FALSE)
 trainDat <- merge(trainDat,pts,by.x="ID",by.y="ID")
 
 # visualize data spatially:
-spplot(scale(studyArea))
+plot(studyArea)
 plot(studyArea$DEM)
 plot(pts[,1],add=TRUE,col="black")
 
@@ -108,24 +108,18 @@ model <- train(trainDat[,which(names(trainDat)\%in\%variables)],
 trainDat$VW, method="rf", importance=TRUE, tuneLength=1,
 trControl=trainControl(method="cv",number=5,savePredictions=T))
 print(model) #note that this is a quite poor prediction model
-prediction <- predict(studyArea,model)
+prediction <- predict(studyArea,model,na.rm=TRUE)
 plot(varImp(model,scale=FALSE))
 
 #...then calculate the AOA of the trained model for the study area:
 AOA <- aoa(studyArea,model)
 plot(AOA)
-spplot(AOA$DI, col.regions=viridis(100),main="Dissimilarity Index")
-#plot predictions for the AOA only:
-spplot(prediction, col.regions=viridis(100),main="prediction for the AOA")+
-spplot(AOA$AOA,col.regions=c("grey","transparent"))
 
 ####
 #The AOA can also be calculated without a trained model.
 #All variables are weighted equally in this case:
 ####
 AOA <- aoa(studyArea,train=trainDat,variables=variables)
-spplot(AOA$DI, col.regions=viridis(100),main="Dissimilarity Index")
-spplot(AOA$AOA,main="Area of Applicability")
 
 
 ####
@@ -149,7 +143,7 @@ lrn$train(task)
 rsmp_cv <- rsmp("cv", folds = 5L)$instantiate(task)
 
 ## predict:
-prediction <- predict(studyArea,lrn$model)
+prediction <- predict(studyArea,lrn$model,na.rm=TRUE)
 
 ### Estimate AOA
 AOA <- aoa(studyArea,

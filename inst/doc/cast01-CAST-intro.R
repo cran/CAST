@@ -47,10 +47,10 @@ model <- train(trainDat[,predictors],trainDat$VW,
                trControl=trainControl(method="cv",number=3))
 
 ## ---- message = FALSE, warning=FALSE------------------------------------------
-library(raster)
-predictors_sp <- stack(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))
-prediction <- predict(predictors_sp,model)
-spplot(prediction)
+library(terra)
+predictors_sp <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))
+prediction <- predict(predictors_sp,model,na.rm=TRUE)
+plot(prediction)
 
 ## ---- message = FALSE, warning=FALSE------------------------------------------
 model
@@ -83,8 +83,8 @@ ffsmodel_LLO$selectedvars
 plot_ffs(ffsmodel_LLO)
 
 ## ---- message = FALSE, warning=FALSE------------------------------------------
-prediction_ffs <- predict(predictors_sp,ffsmodel_LLO)
-spplot(prediction_ffs)
+prediction_ffs <- predict(predictors_sp,ffsmodel_LLO,na.rm=TRUE)
+plot(prediction_ffs)
 
 ## ---- message = FALSE, warning=FALSE------------------------------------------
 library(latticeExtra)
@@ -92,12 +92,18 @@ library(latticeExtra)
 ### AOA for which the spatial CV error applies:
 AOA <- aoa(predictors_sp,ffsmodel_LLO)
 
-spplot(prediction_ffs,main="prediction for the AOA \n(spatial CV error applied)")+
-spplot(AOA$AOA,col.regions=c("grey","transparent"))
+plot(prediction_ffs,main="prediction for the AOA \n(spatial CV error applied)")
+plot(AOA$AOA,col=c("grey","transparent"),add=T)
+
+#spplot(prediction_ffs,main="prediction for the AOA \n(spatial CV error applied)")+
+#spplot(AOA$AOA,col.regions=c("grey","transparent"))
 
 ### AOA for which the random CV error applies:
 AOA_random <- aoa(predictors_sp,model)
-spplot(prediction,main="prediction for the AOA \n(random CV error applied)")+
-spplot(AOA_random$AOA,col.regions=c("grey","transparent"))
+plot(prediction,main="prediction for the AOA \n(random CV error applied)")
+plot(AOA_random$AOA,col=c("grey","transparent"),add=T)
+
+#spplot(prediction,main="prediction for the AOA \n(random CV error applied)")+
+#spplot(AOA_random$AOA,col.regions=c("grey","transparent"))
 
 

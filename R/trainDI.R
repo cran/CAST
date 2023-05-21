@@ -53,7 +53,7 @@
 #' @examples
 #' \dontrun{
 #' library(sf)
-#' library(raster)
+#' library(terra)
 #' library(caret)
 #' library(viridis)
 #' library(latticeExtra)
@@ -66,12 +66,12 @@
 #' pts$ID <- 1:nrow(pts)
 #' set.seed(100)
 #' pts <- pts[1:30,]
-#' studyArea <- stack(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))[[1:8]]
-#' trainDat <- extract(studyArea,pts,df=TRUE)
+#' studyArea <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))[[1:8]]
+#' trainDat <- extract(studyArea,pts,na.rm=FALSE)
 #' trainDat <- merge(trainDat,pts,by.x="ID",by.y="ID")
 #'
 #' # visualize data spatially:
-#' spplot(scale(studyArea))
+#' plot(studyArea)
 #' plot(studyArea$DEM)
 #' plot(pts[,1],add=TRUE,col="black")
 #'
@@ -82,7 +82,7 @@
 #' trainDat$VW, method="rf", importance=TRUE, tuneLength=1,
 #' trControl=trainControl(method="cv",number=5,savePredictions=T))
 #' print(model) #note that this is a quite poor prediction model
-#' prediction <- predict(studyArea,model)
+#' prediction <- predict(studyArea,model,na.rm=TRUE)
 #' plot(varImp(model,scale=FALSE))
 #'
 #' #...then calculate the DI of the trained model:
@@ -166,7 +166,7 @@ trainDI <- function(model = NA,
 
 
   # multiply train data with variable weights (from variable importance)
-  if(!inherits(weight, "error")){
+  if(!inherits(weight, "error")&!is.null(unlist(weight))){
     train <- sapply(1:ncol(train),function(x){train[,x]*unlist(weight[x])})
   }
 
@@ -265,12 +265,15 @@ aoa_categorial_train <- function(train, variables, weight){
                       error=function(e) e)
 
   if (!inherits(catvars,"error")&length(catvars)>0){
+    message("warning: predictors contain categorical variables. The integration is currently still under development. Please check results carefully!")
+
     for (catvar in catvars){
       # mask all unknown levels in newdata as NA (even technically no predictions can be made)
       train[,catvar]<-droplevels(train[,catvar])
 
       # then create dummy variables for the remaining levels in train:
-      dvi_train <- predict(caret::dummyVars(paste0("~",catvar), data = train),train)
+      dvi_train <- predict(caret::dummyVars(paste0("~",catvar), data = train),
+                           train)
       train <- data.frame(train,dvi_train)
 
       if(!inherits(weight, "error")){

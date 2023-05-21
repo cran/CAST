@@ -1,20 +1,20 @@
 Package: CAST
 Type: Package
 Title: 'caret' Applications for Spatial-Temporal Models
-Version: 0.7.1
+Version: 0.8.0
 Authors@R: c(person("Hanna", "Meyer", email = "hanna.meyer@uni-muenster.de", role = c("cre", "aut")),
              person("Carles", "Milà", role = c("aut")),
              person("Marvin", "Ludwig", role = c("aut")),
+             person("Jan", "Linnenbrink", role = c("aut")),
              person("Philipp", "Otto", role = c("ctb")),
-             person("Jan", "Linnenbrink", role = c("ctb")),
              person("Chris", "Reudenbach", role = c("ctb")),
              person("Thomas", "Nauss", role = c("ctb")),
              person("Edzer", "Pebesma", role = c("ctb")))
 Author: Hanna Meyer [cre, aut],
   Carles Milà [aut],
   Marvin Ludwig [aut],
+  Jan Linnenbrink [aut],
   Philipp Otto [ctb],
-  Jan Linnenbrink [ctb],
   Chris Reudenbach [ctb],
   Thomas Nauss [ctb],
   Edzer Pebesma [ctb]
@@ -27,13 +27,14 @@ Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Imports: caret, stats, utils, ggplot2, graphics, FNN, plyr, zoo,
         methods, grDevices, data.table, lattice
-Suggests: doParallel, randomForest, lubridate, raster, sp, knitr,
-        mapview, rmarkdown, sf, scales, parallel, latticeExtra,
-        virtualspecies, gridExtra, viridis, rgeos, stars, scam, terra,
-        rnaturalearth, rgdal, MASS
-RoxygenNote: 7.2.1
+Suggests: doParallel, randomForest, lubridate, sp, knitr, mapview,
+        rmarkdown, sf, scales, parallel, latticeExtra, gridExtra,
+        viridis, stars, scam, terra, rnaturalearth, MASS, twosamples,
+        testthat (>= 3.0.0)
+RoxygenNote: 7.2.3
 VignetteBuilder: knitr
+Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2023-02-04 09:13:44 UTC; hanna
+Packaged: 2023-05-21 09:29:43 UTC; hanna
 Repository: CRAN
-Date/Publication: 2023-02-04 10:02:31 UTC
+Date/Publication: 2023-05-21 10:10:02 UTC

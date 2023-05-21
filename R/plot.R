@@ -47,16 +47,18 @@ plot.aoa = function(x, samplesize = 1000, ...){
 
 
   if(inherits(x$AOA, "RasterLayer")){
-    targetDI = raster::sampleRegular(x$DI, size = samplesize)
-    targetDI = data.frame(DI = as.numeric(targetDI),
+    targetDI = terra::spatSample(methods::as(x$DI, "SpatRaster"),
+                                 size = samplesize, method="regular")
+    targetDI = data.frame(DI = as.numeric(targetDI[,1]),
                           what = "predictionDI")
   }else if(inherits(x$AOA, "stars")){
-    targetDI = raster::sampleRegular(methods::as(x$DI, "Raster"), size = samplesize)
-    targetDI = data.frame(DI = as.numeric(targetDI),
+    targetDI = terra::spatSample(methods::as(x$DI, "SpatRaster"),
+                                 size = samplesize,method="regular")
+    targetDI = data.frame(DI = as.numeric(targetDI[,1]),
                           what = "predictionDI")
   }else if(inherits(x$AOA, "SpatRaster")){
-    targetDI = raster::sampleRegular(methods::as(x$DI, "Raster"), size = samplesize)
-    targetDI = data.frame(DI = as.numeric(targetDI),
+    targetDI = terra::spatSample(x$DI, size = samplesize,method="regular")
+    targetDI = data.frame(DI = as.numeric(targetDI[,1]),
                           what = "predictionDI")
   }else{
     targetDI = data.frame(DI = sample(x$DI, size = samplesize),
@@ -136,5 +138,44 @@ plot.nndm <- function(x, ...){
     ggplot2::theme_bw() +
     ggplot2::theme(legend.text.align=0,
                    legend.text=ggplot2::element_text(size=12))
+}
+
+
+#' @name plot
+#' @param x An object of type \emph{knndm}.
+#' @param ... other arguments.
+#' @author Carles Milà
+#'
+#' @export
+plot.knndm <- function(x, ...){
+
+  # Prepare data for plotting: Gij function
+  Gij_df <- data.frame(r=x$Gij[order(x$Gij)])
+  Gij_df$Function <- "1_Gij(r)"
+
+  # Prepare data for plotting: Gjstar function
+  Gjstar_df <- data.frame(r=x$Gjstar[order(x$Gjstar)])
+  Gjstar_df$Function <- "2_Gjstar(r)"
+
+  # Prepare data for plotting: G function
+  Gj_df <- data.frame(r=x$Gj[order(x$Gj)])
+  Gj_df$Function <- "3_Gj(r)"
+
+  # Merge data for plotting
+  Gplot <- rbind(Gij_df, Gjstar_df, Gj_df)
+
+  # Plot
+  ggplot2::ggplot(data=Gplot, ggplot2::aes_string(x="r", group="Function", col="Function")) +
+    ggplot2::geom_vline(xintercept=0, lwd = 0.1) +
+    ggplot2::geom_hline(yintercept=0, lwd = 0.1) +
+    ggplot2::geom_hline(yintercept=1, lwd = 0.1) +
+    ggplot2::stat_ecdf(geom = "step", lwd = 1) +
+    ggplot2::scale_colour_manual(values=c("#000000", "#E69F00", "#56B4E9"),
+                                 labels=c(expression(hat(G)[ij](r)),
+                                          expression(hat(G)[j]^"*"*"(r,L)"),
+                                          expression(hat(G)[j](r)))) +
+    ggplot2::ylab(expression(paste(hat(G)[ij](r), ", ",
+                                   hat(G)[j]^"*"*"(r,L)", ", ",
+                                   hat(G)[j](r))))
 }
 

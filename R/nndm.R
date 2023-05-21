@@ -112,6 +112,7 @@
 #' pts <- st_as_sf(pts,coords=c("Easting","Northing"))
 #' st_crs(pts) <- 26911
 #' studyArea <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))
+#' studyArea[!is.na(studyArea)] <- 1
 #' studyArea <- as.polygons(studyArea, values = FALSE, na.all = TRUE) |>
 #'     st_as_sf() |>
 #'     st_union()
@@ -147,6 +148,7 @@ nndm <- function(tpoints, modeldomain = NULL, ppoints = NULL, samplesize = 1000,
     }
     message(paste0(samplesize, " prediction points are sampled from the modeldomain"))
     ppoints <- sf::st_sample(x = modeldomain, size = samplesize, type = sampling)
+    sf::st_crs(ppoints) <- sf::st_crs(modeldomain)
   }else if(!is.null(ppoints)){
     if(!identical(sf::st_crs(tpoints), sf::st_crs(ppoints))){
       stop("tpoints and ppoints must have the same CRS")

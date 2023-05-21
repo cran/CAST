@@ -5,7 +5,7 @@ knitr::opts_chunk$set(echo = TRUE,fig.width=6.2, fig.height=3.4)
 ## ---- message = FALSE, warning=FALSE------------------------------------------
 library(CAST)
 library(caret)
-library(raster)
+library(terra)
 library(sf)
 library(rnaturalearth)
 library(ggplot2)
@@ -150,7 +150,7 @@ dist_rand$plot+scale_x_log10(labels=round)
 
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
-predictors_global <- stack(system.file("extdata","bioclim_global.grd",package="CAST"))
+predictors_global <- rast(system.file("extdata","bioclim_global.grd",package="CAST"))
 
 plot(predictors_global)
 
