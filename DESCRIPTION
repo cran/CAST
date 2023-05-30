@@ -1,7 +1,7 @@
 Package: CAST
 Type: Package
 Title: 'caret' Applications for Spatial-Temporal Models
-Version: 0.8.0
+Version: 0.8.1
 Authors@R: c(person("Hanna", "Meyer", email = "hanna.meyer@uni-muenster.de", role = c("cre", "aut")),
              person("Carles", "Milà", role = c("aut")),
              person("Marvin", "Ludwig", role = c("aut")),
@@ -35,6 +35,6 @@ RoxygenNote: 7.2.3
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2023-05-21 09:29:43 UTC; hanna
+Packaged: 2023-05-30 10:41:50 UTC; hanna
 Repository: CRAN
-Date/Publication: 2023-05-21 10:10:02 UTC
+Date/Publication: 2023-05-30 12:00:06 UTC

@@ -18,7 +18,7 @@ RMSE = function(a, b){
 
 ## ---- message = FALSE, warning=FALSE------------------------------------------
 predictors <- rast(system.file("extdata","bioclim.grd",package="CAST"))
-plot(stretch(predictors,0,1),col=viridis(100))
+plot(predictors,col=viridis(100))
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 
@@ -61,13 +61,14 @@ plot(response,col=viridis(100),main="virtual response")
 mask <- predictors[[1]]
 values(mask)[!is.na(values(mask))] <- 1
 mask <- st_as_sf(as.polygons(mask))
+mask <- st_make_valid(mask)
 
+## ----message = FALSE, warning=FALSE-------------------------------------------
 set.seed(15)
 samplepoints <- st_as_sf(st_sample(mask,20,"random"))
 
 plot(response,col=viridis(100))
 plot(samplepoints,col="red",add=T,pch=3)
-
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 trainDat <- extract(predictors,samplepoints,na.rm=FALSE)
@@ -105,10 +106,10 @@ plot(AOA)
 plot(truediff,col=viridis(100),main="true prediction error")
 plot(AOA$DI,col=viridis(100),main="DI")
 plot(prediction, col=viridis(100),main="prediction for AOA")
-plot(AOA$AOA,col=c("grey","transparent"),add=T)
+plot(AOA$AOA,col=c("grey","transparent"),add=T,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
-set.seed(15)
+set.seed(25)
 samplepoints <- clustered_sample(mask,75,15,radius=25000)
 
 plot(response,col=viridis(100))
@@ -153,9 +154,9 @@ AOA_random <- aoa(predictors, model_random)
 ## ----message = FALSE, warning=FALSE,  fig.show="hold", out.width="50%"--------
 plot(AOA_spatial$DI,col=viridis(100),main="DI")
 plot(prediction, col=viridis(100),main="prediction for AOA \n(spatial CV error applies)")
-plot(AOA_spatial$AOA,col=c("grey","transparent"),add=TRUE)
+plot(AOA_spatial$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
 plot(prediction_random, col=viridis(100),main="prediction for AOA \n(random CV error applies)")
-plot(AOA_random$AOA,col=c("grey","transparent"),add=TRUE)
+plot(AOA_random$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
 
 ## ---- message = FALSE, warning=FALSE------------------------------------------
 grid.arrange(plot(AOA_spatial) + ggplot2::ggtitle("Spatial CV"),
@@ -180,7 +181,7 @@ model_random$results
 AOA_calib <- calibrate_aoa(AOA_spatial,model,window.size = 5,length.out = 5, multiCV=TRUE,showPlot=FALSE)
 AOA_calib$plot
 plot(AOA_calib$AOA$expected_RMSE,col=viridis(100),main="expected RMSE")
-plot(AOA$AOA,col=c("grey","transparent"),add=TRUE)
+plot(AOA_calib$AOA$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
 
 ## ---- message = FALSE, warning=FALSE------------------------------------------
 dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
@@ -222,6 +223,6 @@ plot(AOA$DI,col=viridis(100),main="DI with sampling locations (red)")
 plot(pts,zcol="ID",col="red",add=TRUE)
 
 plot(prediction, col=viridis(100),main="prediction for AOA \n(LOOCV error applies)")
-plot(AOA$AOA,col=c("grey","transparent"),add=TRUE)
+plot(AOA$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
 
 
