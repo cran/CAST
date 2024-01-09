@@ -1,7 +1,20 @@
+# `CAST` 0.9.0
+* new features:
+  * CAST functions now return classes with generic plotting and printing
+  * new dataset for examples, tutorials and testing: data(splotdata)
+* modifications:
+  * calibrate_aoa is now DItoErrormetric and returns a model (see function documentation)
+  * plot_geodist is now geodist. The result can be visualized with plot()
+  * plot_ffs is now plot(ffs)
+* bug fix:
+  * fix issue #65 (threshold)
+* deprecated (soon):
+  * plot_geodist, plot_ffs, calibrate_aoa
+  
+  
 # `CAST` 0.8.1
 * bugfix:
   * failed checks on Fedora 34 fixed
-
   
 # `CAST` 0.8.0
 * new features:

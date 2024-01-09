@@ -79,7 +79,7 @@
 #' registerDoParallel(cl)
 #'
 #' #load and prepare dataset:
-#' dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
+#' dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
 #' trainDat <- dat[dat$altitude==-0.3&year(dat$Date)==2012&week(dat$Date)%in%c(13:14),]
 #'
 #' #visualize dataset:
@@ -99,6 +99,9 @@
 #' ffsmodel <- ffs(trainDat[,predictors],trainDat$VW,method="rf",
 #' tuneLength=1,trControl=ctrl)
 #' ffsmodel
+#' plot(ffsmodel)
+#' #or only selected variables:
+#' plot(ffsmodel,plotType="selected")
 #'
 #' #compare to model without ffs:
 #' model <- train(trainDat[,predictors],trainDat$VW,method="rf",
@@ -275,6 +278,7 @@ ffs <- function (predictors,
       bestmodel$perf_all <- bestmodel$perf_all[colSums(!is.na(bestmodel$perf_all)) > 0]
       bestmodel$minVar <- minVar
       bestmodel$type <- "ffs"
+      class(bestmodel) <- c("ffs", "train")
       return(bestmodel)
       break()
     }
@@ -392,5 +396,6 @@ ffs <- function (predictors,
   bestmodel$minVar <- minVar
   bestmodel$type <- "ffs"
   bestmodel$perf_all <- bestmodel$perf_all[colSums(!is.na(bestmodel$perf_all)) > 0]
+  class(bestmodel) <- c("ffs", "train")
   return(bestmodel)
 }

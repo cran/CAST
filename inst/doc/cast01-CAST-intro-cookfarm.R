@@ -1,32 +1,32 @@
 ## ----setup, echo=FALSE--------------------------------------------------------
-knitr::opts_chunk$set(fig.width = 8.83,cache = TRUE)
+knitr::opts_chunk$set(fig.width = 8.83,cache = FALSE)
 user_hanna <- Sys.getenv("USER") %in% c("hanna")
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c1, message = FALSE, warning=FALSE---------------------------------------
 #install.packages("CAST")
 library(CAST)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c2, message = FALSE, warning=FALSE---------------------------------------
 help(CAST)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
-data <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
+## ----c3, message = FALSE, warning=FALSE---------------------------------------
+data <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
 head(data)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c4, message = FALSE, warning=FALSE---------------------------------------
 
 library(sf)
 data_sp <- unique(data[,c("SOURCEID","Easting","Northing")])
 data_sp <- st_as_sf(data_sp,coords=c("Easting","Northing"),crs=26911)
 plot(data_sp,axes=T,col="black")
 
-## ---- message = FALSE, warning=FALSE, eval=user_hanna-------------------------
+## ----c5, message = FALSE, warning=FALSE, eval=user_hanna----------------------
 #...or plot the data with mapview:
 library(mapview)
 mapviewOptions(basemaps = c("Esri.WorldImagery"))
 mapview(data_sp)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c6, message = FALSE, warning=FALSE---------------------------------------
 library(lubridate)
 library(ggplot2)
 trainDat <- data[data$altitude==-0.3&
@@ -35,7 +35,7 @@ trainDat <- data[data$altitude==-0.3&
 ggplot(data = trainDat, aes(x=Date, y=VW)) +
   geom_line(aes(colour=SOURCEID))
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c7, message = FALSE, warning=FALSE---------------------------------------
 library(caret)
 predictors <- c("DEM","TWI","Precip_cum","cday",
                 "MaxT_wrcc","Precip_wrcc","BLD",
@@ -46,16 +46,16 @@ model <- train(trainDat[,predictors],trainDat$VW,
                importance=TRUE,ntree=50,
                trControl=trainControl(method="cv",number=3))
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c8, message = FALSE, warning=FALSE---------------------------------------
 library(terra)
-predictors_sp <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))
+predictors_sp <- rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))
 prediction <- predict(predictors_sp,model,na.rm=TRUE)
 plot(prediction)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c9, message = FALSE, warning=FALSE---------------------------------------
 model
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c10, message = FALSE, warning=FALSE--------------------------------------
 set.seed(10)
 indices <- CreateSpacetimeFolds(trainDat,spacevar = "SOURCEID",
                                 k=3)
@@ -66,10 +66,10 @@ model_LLO <- train(trainDat[,predictors],trainDat$VW,
                                           index = indices$index))
 model_LLO
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c11, message = FALSE, warning=FALSE--------------------------------------
 plot(varImp(model_LLO))
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c12, message = FALSE, warning=FALSE--------------------------------------
 set.seed(10)
 ffsmodel_LLO <- ffs(trainDat[,predictors],trainDat$VW,metric="Rsquared",
                     method="rf", tuneGrid=data.frame("mtry"=2),
@@ -79,16 +79,14 @@ ffsmodel_LLO <- ffs(trainDat[,predictors],trainDat$VW,metric="Rsquared",
 ffsmodel_LLO
 ffsmodel_LLO$selectedvars
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
-plot_ffs(ffsmodel_LLO)
+## ----c13, message = FALSE, warning=FALSE--------------------------------------
+plot(ffsmodel_LLO)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----c14, message = FALSE, warning=FALSE--------------------------------------
 prediction_ffs <- predict(predictors_sp,ffsmodel_LLO,na.rm=TRUE)
 plot(prediction_ffs)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
-library(latticeExtra)
-
+## ----c15, message = FALSE, warning=FALSE--------------------------------------
 ### AOA for which the spatial CV error applies:
 AOA <- aoa(predictors_sp,ffsmodel_LLO)
 

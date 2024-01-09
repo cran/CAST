@@ -56,17 +56,16 @@
 #' library(terra)
 #' library(caret)
 #' library(viridis)
-#' library(latticeExtra)
 #' library(ggplot2)
 #'
 #' # prepare sample data:
-#' dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
+#' dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
 #' dat <- aggregate(dat[,c("VW","Easting","Northing")],by=list(as.character(dat$SOURCEID)),mean)
 #' pts <- st_as_sf(dat,coords=c("Easting","Northing"))
 #' pts$ID <- 1:nrow(pts)
 #' set.seed(100)
 #' pts <- pts[1:30,]
-#' studyArea <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))[[1:8]]
+#' studyArea <- rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))[[1:8]]
 #' trainDat <- extract(studyArea,pts,na.rm=FALSE)
 #' trainDat <- merge(trainDat,pts,by.x="ID",by.y="ID")
 #'
@@ -200,6 +199,7 @@ trainDI <- function(model = NA,
     whichfold <- NA
     if(!is.null(CVtrain)&!is.null(CVtest)){
       whichfold <-  as.numeric(which(lapply(CVtest,function(x){any(x==i)})==TRUE)) # index of the fold where i is held back
+      if(length(whichfold)>1){stop("a datapoint is used for testing in more than one fold. currently this option is not implemented")}
       if(length(whichfold)!=0){ # in case that a data point is never used for testing
         trainDist[!seq(nrow(train))%in%CVtrain[[whichfold]]] <- NA # everything that is not in the training data for i is ignored
       }
@@ -228,6 +228,10 @@ trainDI <- function(model = NA,
   threshold_quantile <- stats::quantile(TrainDI, 0.75,na.rm=TRUE)
   threshold_iqr <- (1.5 * stats::IQR(TrainDI,na.rm=T))
   thres <- threshold_quantile + threshold_iqr
+  # account for case that threshold_quantile + threshold_iqr is larger than maximum DI.
+  if (thres>max(TrainDI,na.rm=T)){
+    thres <- max(TrainDI,na.rm=T)
+  }
 
   # note: previous versions of CAST derived the threshold this way:
   #thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
@@ -244,7 +248,8 @@ trainDI <- function(model = NA,
     trainDist_avrg = trainDist_avrg,
     trainDist_avrgmean = trainDist_avrgmean,
     trainDI = TrainDI,
-    threshold = thres
+    threshold = thres,
+    method = method
   )
 
   class(aoa_results) = "trainDI"

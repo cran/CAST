@@ -40,7 +40,7 @@
 #'
 #' @note NNDM is a variation of LOOCV and therefore may take a long time for large training data sets.
 #' A k-fold variant will be implemented shortly.
-#' @seealso \code{\link{plot_geodist}}
+#' @seealso \code{\link{geodist}}, \code{\link{knndm}}
 #' @references
 #' \itemize{
 #' \item Milà, C., Mateu, J., Pebesma, E., Meyer, H. (2022): Nearest Neighbour Distance Matching Leave-One-Out Cross-Validation for map validation. Methods in Ecology and Evolution 00, 1– 13.
@@ -105,13 +105,13 @@
 #' library(terra)
 #'
 #' ### prepare sample data:
-#' dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
+#' dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
 #' dat <- aggregate(dat[,c("DEM","TWI", "NDRE.M", "Easting", "Northing","VW")],
 #'    by=list(as.character(dat$SOURCEID)),mean)
 #' pts <- dat[,-1]
 #' pts <- st_as_sf(pts,coords=c("Easting","Northing"))
 #' st_crs(pts) <- 26911
-#' studyArea <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))
+#' studyArea <- rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))
 #' studyArea[!is.na(studyArea)] <- 1
 #' studyArea <- as.polygons(studyArea, values = FALSE, na.all = TRUE) |>
 #'     st_as_sf() |>

@@ -2,12 +2,13 @@
 % Please edit documentation in R/knndm.R
 \name{knndm}
 \alias{knndm}
-\title{[EXPERIMENTAL] K-fold Nearest Neighbour Distance Matching}
+\title{K-fold Nearest Neighbour Distance Matching}
 \usage{
 knndm(
   tpoints,
   modeldomain = NULL,
   ppoints = NULL,
+  space = "geographical",
   k = 10,
   maxp = 0.5,
   clustering = "hierarchical",
@@ -19,9 +20,11 @@ knndm(
 \arguments{
 \item{tpoints}{sf or sfc point object. Contains the training points samples.}
 
-\item{modeldomain}{sf polygon object defining the prediction area (see Details).}
+\item{modeldomain}{sf polygon object defining the prediction area. Optional; alternative to ppoints (see Details).}
 
-\item{ppoints}{sf or sfc point object. Contains the target prediction points. Optional. Alternative to modeldomain (see Details).}
+\item{ppoints}{sf or sfc point object. Contains the target prediction points. Optional; alternative to modeldomain (see Details).}
+
+\item{space}{character. Only "geographical" knndm, i.e. kNNDM in the geographical space, is currently implemented.}
 
 \item{k}{integer. Number of folds desired for CV. Defaults to 10.}
 
@@ -39,13 +42,13 @@ Only required if modeldomain is used instead of ppoints.}
 Only required if modeldomain is used instead of ppoints.}
 }
 \value{
-An object of class \emph{knndm} consisting of a list of seven elements:
+An object of class \emph{knndm} consisting of a list of eight elements:
 indx_train, indx_test (indices of the observations to use as
 training/test data in each kNNDM CV iteration), Gij (distances for
 G function construction between prediction and target points), Gj
 (distances for G function construction during LOO CV), Gjstar (distances
-for modified G function during kNNDM CV), clusters (list of cluster IDs), and
-W (Wasserstein statistic).
+for modified G function during kNNDM CV), clusters (list of cluster IDs),
+W (Wasserstein statistic), and space (stated by the user in the function call).
 }
 \description{
 This function implements the kNNDM algorithm and returns the necessary
@@ -151,13 +154,14 @@ library(terra)
 library(ggplot2)
 
 ### prepare sample data:
-dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
+dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
 dat <- aggregate(dat[,c("DEM","TWI", "NDRE.M", "Easting", "Northing","VW")],
    by=list(as.character(dat$SOURCEID)),mean)
 pts <- dat[,-1]
 pts <- st_as_sf(pts,coords=c("Easting","Northing"))
 st_crs(pts) <- 26911
-studyArea <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))
+studyArea <- rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))
+studyArea[!is.na(studyArea)] <- 1
 studyArea <- as.polygons(studyArea, values = FALSE, na.all = TRUE) |>
     st_as_sf() |>
     st_union()
@@ -183,6 +187,15 @@ model_knndm <- train(dat[,c("DEM","TWI", "NDRE.M")],
    trControl = ctrl)
 global_validation(model_knndm)
 }
+}
+\references{
+\itemize{
+\item Linnenbrink, J., Milà, C., Ludwig, M., and Meyer, H.: kNNDM: k-fold Nearest Neighbour Distance Matching Cross-Validation for map accuracy estimation, EGUsphere [preprint], https://doi.org/10.5194/egusphere-2023-1308, 2023.
+\item Milà, C., Mateu, J., Pebesma, E., Meyer, H. (2022): Nearest Neighbour Distance Matching Leave-One-Out Cross-Validation for map validation. Methods in Ecology and Evolution 00, 1– 13.
+}
+}
+\seealso{
+\code{\link{geodist}}, \code{\link{nndm}}
 }
 \author{
 Carles Milà and Jan Linnenbrink

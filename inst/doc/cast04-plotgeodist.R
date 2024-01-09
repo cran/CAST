@@ -2,7 +2,7 @@
 knitr::opts_chunk$set(echo = TRUE,fig.width=6.2, fig.height=3.4)
 
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----message = FALSE, warning=FALSE-------------------------------------------
 library(CAST)
 library(caret)
 library(terra)
@@ -10,7 +10,7 @@ library(sf)
 library(rnaturalearth)
 library(ggplot2)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----message = FALSE, warning=FALSE-------------------------------------------
 seed <- 10 # random realization
 samplesize <- 300 # how many samples will be used?
 nparents <- 20 #For clustered samples: How many clusters? 
@@ -29,7 +29,7 @@ pts_random <- st_sample(co.ee, samplesize)
 ### See points on the map:
 ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
   geom_sf(data = pts_random, color = "#F8766D",size=0.5, shape=3) +
-  guides(fill = FALSE, col = FALSE) +
+  guides(fill = "none", col = "none") +
   labs(x = NULL, y = NULL)
 
 
@@ -40,22 +40,18 @@ pts_clustered <- clustered_sample(co.ee, samplesize, nparents, radius)
 
 ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
   geom_sf(data = pts_clustered, color = "#F8766D",size=0.5, shape=3) +
-  guides(fill = FALSE, col = FALSE) +
+  guides(fill = "none", col = "none") +
   labs(x = NULL, y = NULL)
 
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
-dist_random <- plot_geodist(pts_random,co.ee,
-                            sampling="Fibonacci",
-                            unit="km",
-                            showPlot = FALSE)
-dist_clstr <- plot_geodist(pts_clustered,co.ee,
-                           sampling="Fibonacci",
-                           unit="km",
-                           showPlot = FALSE)
+dist_random <- geodist(pts_random,co.ee,
+                            sampling="Fibonacci")
+dist_clstr <- geodist(pts_clustered,co.ee,
+                           sampling="Fibonacci")
 
-dist_random$plot+scale_x_log10(labels=round)+ggtitle("Randomly distributed reference data")
-dist_clstr$plot+scale_x_log10(labels=round)+ggtitle("Clustered reference data")
+plot(dist_random, unit = "km")+scale_x_log10(labels=round)+ggtitle("Randomly distributed reference data")
+plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)+ggtitle("Clustered reference data")
              
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
@@ -72,12 +68,10 @@ ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
   labs(x = NULL, y = NULL)+ggtitle("random fold membership shown by color")
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
-dist_clstr <- plot_geodist(pts_clustered,co.ee,
+dist_clstr <- geodist(pts_clustered,co.ee,
                            sampling="Fibonacci", 
-                           cvfolds= randomfolds, 
-                           unit="km",
-                           showPlot=FALSE)
-dist_clstr$plot+scale_x_log10(labels=round)
+                           cvfolds= randomfolds)
+plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)
 
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
@@ -90,12 +84,10 @@ ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
   labs(x = NULL, y = NULL)+ ggtitle("spatial fold membership by color")
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
-dist_clstr <- plot_geodist(pts_clustered,co.ee,
+dist_clstr <- geodist(pts_clustered,co.ee,
                            sampling="Fibonacci",
-                           cvfolds= spatialfolds$indexOut, 
-                           unit="km",
-                           showPlot=FALSE)
-dist_clstr$plot+scale_x_log10(labels=round)
+                           cvfolds= spatialfolds$indexOut)
+plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)
 
              
 
@@ -117,60 +109,71 @@ ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
 
 spfolds_rand <- CreateSpacetimeFolds(pts_random_co,spacevar = "subregion",
                                      k=length(unique(pts_random_co$subregion)))
-dist_rand_sp <- plot_geodist(pts_random_co,co.ee,
+dist_rand_sp <- geodist(pts_random_co,co.ee,
                              sampling="Fibonacci", 
-                             cvfolds= spfolds_rand$indexOut, 
-                             unit="km",
-                             showPlot=FALSE)
-dist_rand_sp$plot+scale_x_log10(labels=round)
+                             cvfolds= spfolds_rand$indexOut)
+plot(dist_rand_sp, unit = "km")+scale_x_log10(labels=round)
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
 
 
 nndmfolds_clstr <- nndm(pts_clustered, modeldomain=co.ee, samplesize = 2000)
-dist_clstr <- plot_geodist(pts_clustered,co.ee,
+dist_clstr <- geodist(pts_clustered,co.ee,
                            sampling = "Fibonacci",
                            cvfolds = nndmfolds_clstr$indx_test, 
-                           cvtrain = nndmfolds_clstr$indx_train,
-                           unit="km",
-                           showPlot = FALSE)
-dist_clstr$plot+scale_x_log10(labels=round)
+                           cvtrain = nndmfolds_clstr$indx_train)
+plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)
 
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
 
 nndmfolds_rand <- nndm(pts_random_co,  modeldomain=co.ee, samplesize = 2000)
-dist_rand <- plot_geodist(pts_random_co,co.ee,
+dist_rand <- geodist(pts_random_co,co.ee,
                           sampling = "Fibonacci",
                           cvfolds = nndmfolds_rand$indx_test, 
-                          cvtrain = nndmfolds_rand$indx_train,
-                          unit="km",
-                          showPlot = FALSE)
-dist_rand$plot+scale_x_log10(labels=round)
+                          cvtrain = nndmfolds_rand$indx_train)
+plot(dist_rand, unit = "km")+scale_x_log10(labels=round)
 
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
-predictors_global <- rast(system.file("extdata","bioclim_global.grd",package="CAST"))
+
+knndmfolds_clstr <- knndm(pts_clustered, modeldomain=co.ee, samplesize = 2000)
+pts_clustered$knndmCV <- as.character(knndmfolds_clstr$clusters)
+
+ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
+  geom_sf(data = pts_clustered, aes(color=knndmCV),size=0.5, shape=3) +
+  scale_color_manual(values=rainbow(length(unique(pts_clustered$knndmCV))))+
+  guides(fill = FALSE, col = FALSE) +
+  labs(x = NULL, y = NULL)+ ggtitle("spatial fold membership by color")
+
+
+dist_clstr <- geodist(pts_clustered,co.ee,
+                           sampling = "Fibonacci",
+                           cvfolds = knndmfolds_clstr$indx_test, 
+                           cvtrain = knndmfolds_clstr$indx_train)
+plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)
+
+
+## ----message = FALSE, warning=FALSE, results='hide'---------------------------
+predictors_global <- rast(system.file("extdata","bioclim_global.tif",package="CAST"))
 
 plot(predictors_global)
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
 
 # use random CV:
-dist_clstr_rCV <- plot_geodist(pts_clustered,predictors_global,
+dist_clstr_rCV <- geodist(pts_clustered,predictors_global,
                                type = "feature", 
                                sampling="Fibonacci",
-                               cvfolds = randomfolds,
-                               showPlot=FALSE)
+                               cvfolds = randomfolds)
 
 # use spatial CV:
-dist_clstr_sCV <- plot_geodist(pts_clustered,predictors_global,
+dist_clstr_sCV <- geodist(pts_clustered,predictors_global,
                                type = "feature", sampling="Fibonacci",
-                               cvfolds = spatialfolds$indexOut,
-                               showPlot=FALSE)
+                               cvfolds = spatialfolds$indexOut)
 
 
 # Plot results:
-dist_clstr_rCV$plot+scale_x_log10()+ggtitle("Clustered reference data and random CV")
-dist_clstr_sCV$plot+scale_x_log10()+ggtitle("Clustered reference data and spatial CV")
+plot(dist_clstr_rCV)+scale_x_log10()+ggtitle("Clustered reference data and random CV")
+plot(dist_clstr_sCV)+scale_x_log10()+ggtitle("Clustered reference data and spatial CV")
 

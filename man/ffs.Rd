@@ -112,7 +112,7 @@ cl <- makeCluster(3)
 registerDoParallel(cl)
 
 #load and prepare dataset:
-dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
+dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
 trainDat <- dat[dat$altitude==-0.3&year(dat$Date)==2012&week(dat$Date)\%in\%c(13:14),]
 
 #visualize dataset:
@@ -132,6 +132,9 @@ set.seed(10)
 ffsmodel <- ffs(trainDat[,predictors],trainDat$VW,method="rf",
 tuneLength=1,trControl=ctrl)
 ffsmodel
+plot(ffsmodel)
+#or only selected variables:
+plot(ffsmodel,plotType="selected")
 
 #compare to model without ffs:
 model <- train(trainDat[,predictors],trainDat$VW,method="rf",

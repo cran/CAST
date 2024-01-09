@@ -1,123 +1,115 @@
-#' Plot euclidean nearest neighbor distances in geographic space or feature space
+#' Calculate euclidean nearest neighbor distances in geographic space or feature space
 #'
-#' @description Density plot of nearest neighbor distances in geographic space or feature space between training data as well as between training data and prediction locations.
-#' Optional, the nearest neighbor distances between training data and test data or between training data and CV iterations is shown.
-#' The plot can be used to check the suitability of a chosen CV method to be representative to estimate map accuracy. Alternatively distances can also be calculated in the multivariate feature space.
-#'
+#' @description Calculates nearest neighbor distances in geographic space or feature space between training data as well as between training data and prediction locations.
+#' Optional, the nearest neighbor distances between training data and test data or between training data and CV iterations is computed.
 #' @param x object of class sf, training data locations
 #' @param modeldomain SpatRaster, stars or sf object defining the prediction area (see Details)
 #' @param type "geo" or "feature". Should the distance be computed in geographic space or in the normalized multivariate predictor space (see Details)
 #' @param cvfolds optional. list or vector. Either a list where each element contains the data points used for testing during the cross validation iteration (i.e. held back data).
 #' Or a vector that contains the ID of the fold for each training point. See e.g. ?createFolds or ?CreateSpacetimeFolds or ?nndm
 #' @param cvtrain optional. List of row indices of x to fit the model to in each CV iteration. If cvtrain is null but cvfolds is not, all samples but those included in cvfolds are used as training data
-#' @param testdata optional. object of class sf: Data used for independent validation
+#' @param testdata optional. object of class sf: Point data used for independent validation
+#' @param preddata optional. object of class sf: Point data indicating the locations within the modeldomain to be used as target prediction points. Useful when the prediction objective is a subset of
+#' locations within the modeldomain rather than the whole area.
 #' @param samplesize numeric. How many prediction samples should be used?
 #' @param sampling character. How to draw prediction samples? See \link[sp]{spsample}. Use sampling = "Fibonacci" for global applications.
 #' @param variables character vector defining the predictor variables used if type="feature. If not provided all variables included in modeldomain are used.
-#' @param unit character. Only if type=="geo" and only applied to the plot. Supported: "m" or "km".
-#' @param stat "density" for density plot or "ecdf" for empirical cumulative distribution function plot.
-#' @param showPlot logical
-#' @return A list including the plot and the corresponding data.frame containing the distances. Unit of returned geographic distances is meters.
+#' @return A data.frame containing the distances. Unit of returned geographic distances is meters. attributes contain W statistic between prediction area and either sample data, CV folds or test data. See details.
 #' @details The modeldomain is a sf polygon or a raster that defines the prediction area. The function takes a regular point sample (amount defined by samplesize) from the spatial extent.
-#'     If type = "feature", the argument modeldomain (and if provided then also the testdata) has to include predictors. Predictor values for x are optional if modeldomain is a raster.
+#'     If type = "feature", the argument modeldomain (and if provided then also the testdata and/or preddata) has to include predictors. Predictor values for x, testdata and preddata are optional if modeldomain is a raster.
 #'     If not provided they are extracted from the modeldomain rasterStack.
+#'     W statistic describes the match between the distributions. See Linnenbrink et al (2023) for further details.
 #' @note See Meyer and Pebesma (2022) for an application of this plotting function
-#' @seealso \code{\link{nndm}}
+#' @seealso \code{\link{nndm}} \code{\link{knndm}}
 #' @import ggplot2
 #' @author Hanna Meyer, Edzer Pebesma, Marvin Ludwig
 #' @examples
 #' \dontrun{
+#' library(CAST)
 #' library(sf)
 #' library(terra)
 #' library(caret)
+#' library(rnaturalearth)
+#' library(ggplot2)
 #'
-#' ########### prepare sample data:
-#' dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
-#' dat <- aggregate(dat[,c("DEM","TWI", "NDRE.M", "Easting", "Northing")],
-#'   by=list(as.character(dat$SOURCEID)),mean)
-#' pts <- st_as_sf(dat,coords=c("Easting","Northing"))
-#' st_crs(pts) <- 26911
-#' pts_train <- pts[1:29,]
-#' pts_test <- pts[30:42,]
-#' studyArea <- terra::rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))
-#' studyArea <- studyArea[[c("DEM","TWI", "NDRE.M", "NDRE.Sd", "Bt")]]
+#' data(splotdata)
+#' studyArea <- rnaturalearth::ne_countries(continent = "South America", returnclass = "sf")
 #'
 #' ########### Distance between training data and new data:
-#' dist <- plot_geodist(pts_train,studyArea)
+#' dist <- geodist(splotdata, studyArea)
+#' plot(dist)
 #'
-#' ########### Distance between training data, new data and test data:
-#' #mapview(pts_train,col.regions="blue")+mapview(pts_test,col.regions="red")
-#' dist <- plot_geodist(pts_train,studyArea,testdata=pts_test)
+#' ########### Distance between training data, new data and test data (here Chile):
+#' plot(splotdata[,"Country"])
+#' dist <- geodist(splotdata[splotdata$Country != "Chile",], studyArea,
+#'                 testdata = splotdata[splotdata$Country == "Chile",])
+#' plot(dist)
 #'
 #' ########### Distance between training data, new data and CV folds:
-#' folds <- createFolds(1:nrow(pts_train),k=3,returnTrain=FALSE)
-#' dist <- plot_geodist(x=pts_train, modeldomain=studyArea, cvfolds=folds)
-#'
-#' ## or use nndm to define folds
-#' AOI <- as.polygons(rast(studyArea), values = F) |>
-#'   st_as_sf() |>
-#'   st_union() |>
-#'   st_transform(crs = st_crs(pts_train))
-#' nndm_pred <- nndm(pts_train, AOI)
-#' dist <- plot_geodist(x=pts_train, modeldomain=studyArea,
-#'     cvfolds=nndm_pred$indx_test, cvtrain=nndm_pred$indx_train)
+#' folds <- createFolds(1:nrow(splotdata), k=3, returnTrain=FALSE)
+#' dist <- geodist(x=splotdata, modeldomain=studyArea, cvfolds=folds)
+#' plot(dist)
 #'
 #' ########### Distances in the feature space:
-#' plot_geodist(x=pts_train, modeldomain=studyArea,
-#'     type = "feature",variables=c("DEM","TWI", "NDRE.M"))
+#' predictors <- terra::rast(system.file("extdata","predictors_chile.tif", package="CAST"))
+#' dist <- geodist(x = splotdata,
+#'                 modeldomain = predictors,
+#'                 type = "feature",
+#'                 variables = c("bio_1","bio_12", "elev"))
+#' plot(dist)
 #'
-#' dist <- plot_geodist(x=pts_train, modeldomain=studyArea, cvfolds = folds, testdata = pts_test,
-#'     type = "feature",variables=c("DEM","TWI", "NDRE.M"))
+#' dist <- geodist(x = splotdata[splotdata$Country != "Chile",],
+#'                 modeldomain = predictors, cvfolds = folds,
+#'                 testdata = splotdata[splotdata$Country == "Chile",],
+#'                 type = "feature",
+#'                 variables=c("bio_1","bio_12", "elev"))
+#' plot(dist)
 #'
-#'############ Example for a random global dataset
-#'############ (refer to figure in Meyer and Pebesma 2022)
-#'library(sf)
-#'library(rnaturalearth)
-#'library(ggplot2)
+#' ############ Example for a random global dataset
+#' ############ (refer to figure in Meyer and Pebesma 2022)
 #'
-#'### Define prediction area (here: global):
-#'ee <- st_crs("+proj=eqearth")
-#'co <- ne_countries(returnclass = "sf")
-#'co.ee <- st_transform(co, ee)
+#' ### Define prediction area (here: global):
+#' ee <- st_crs("+proj=eqearth")
+#' co <- ne_countries(returnclass = "sf")
+#' co.ee <- st_transform(co, ee)
 #'
-#'### Simulate a spatial random sample
-#'### (alternatively replace pts_random by a real sampling dataset (see Meyer and Pebesma 2022):
-#'sf_use_s2(FALSE)
-#'pts_random <- st_sample(co.ee, 2000, exact=FALSE)
+#' ### Simulate a spatial random sample
+#' ### (alternatively replace pts_random by a real sampling dataset (see Meyer and Pebesma 2022):
+#' sf_use_s2(FALSE)
+#' pts_random <- st_sample(co.ee, 2000, exact=FALSE)
 #'
-#'### See points on the map:
-#'ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
-#'      geom_sf(data = pts_random, color = "#F8766D",size=0.5, shape=3) +
-#'      guides(fill = FALSE, col = FALSE) +
-#'      labs(x = NULL, y = NULL)
+#' ### See points on the map:
+#' ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
+#'   geom_sf(data = pts_random, color = "#F8766D",size=0.5, shape=3) +
+#'   guides(fill = "none", col = "none") +
+#'   labs(x = NULL, y = NULL)
 #'
-#'### plot distances:
-#'dist <- plot_geodist(pts_random,co.ee,showPlot=FALSE)
-#'dist$plot+scale_x_log10(labels=round)
+#' ### plot distances:
+#' dist <- geodist(pts_random,co.ee)
+#' plot(dist) + scale_x_log10(labels=round)
+#'
+#'
+#'
+#'
 #'}
 #' @export
 
-plot_geodist <- function(x,
-                         modeldomain,
-                         type = "geo",
-                         cvfolds=NULL,
-                         cvtrain=NULL,
-                         testdata=NULL,
-                         samplesize=2000,
-                         sampling = "regular",
-                         variables=NULL,
-                         unit="m",
-                         stat = "density",
-                         showPlot=TRUE){
-
-
-  message("plot_geodist() is deprecated and will be removed soon. \n Please use generic plot() function on geodist object from geodist().")
+geodist <- function(x,
+                    modeldomain,
+                    type = "geo",
+                    cvfolds=NULL,
+                    cvtrain=NULL,
+                    testdata=NULL,
+                    preddata=NULL,
+                    samplesize=2000,
+                    sampling = "regular",
+                    variables=NULL){
 
 
   # input formatting ------------
   if (inherits(modeldomain, "Raster")) {
-#    if (!requireNamespace("raster", quietly = TRUE))
-#      stop("package raster required: install that first")
+    #    if (!requireNamespace("raster", quietly = TRUE))
+    #      stop("package raster required: install that first")
     message("Raster will soon not longer be supported. Use terra or stars instead")
     modeldomain <- methods::as(modeldomain,"SpatRaster")
   }
@@ -161,13 +153,31 @@ plot_geodist <- function(x,
         testdata <- sf::st_transform(testdata,4326)
       }
     }
+    if(!is.null(preddata)){
+      if(any(!variables%in%names(preddata))){# extract variable values of raster:
+        preddata <- sf::st_transform(preddata,sf::st_crs(modeldomain))
+        #preddata <- sf::st_as_sf(raster::extract(modeldomain, preddata, df = TRUE, sp = TRUE))
+        preddata <- sf::st_as_sf(terra::extract(modeldomain, preddata, na.rm=FALSE,bind=TRUE))
+
+        if(any(is.na(preddata))){
+          preddata <- na.omit(preddata)
+          message("some prediction data were removed because of NA in extracted predictor values")
+        }
+
+        preddata <- sf::st_transform(preddata,4326)
+      }
+    }
   }
 
 
   # required steps ----
 
-  ## Sample prediction location from the study area:
-  modeldomain <- sampleFromArea(modeldomain, samplesize, type,variables,sampling)
+  ## Sample prediction location from the study area if preddata not available:
+  if(is.null(preddata)){
+    modeldomain <- sampleFromArea(modeldomain, samplesize, type,variables,sampling)}
+  else{
+    modeldomain <- preddata
+  }
 
   # always do sample-to-sample and sample-to-prediction
   s2s <- sample2sample(x, type,variables)
@@ -187,17 +197,27 @@ plot_geodist <- function(x,
     cvd <- cvdistance(x, cvfolds, cvtrain, type, variables)
     dists <- rbind(dists, cvd)
   }
+  class(dists) <- c("geodist", class(dists))
+  attr(dists, "type") <- type
 
-  # Compile output and plot data ----
-  p <- .plot.nnd(dists,type,unit,stat)
-
-  if(showPlot){
-    print(p)
+  ##### Compute W statistics
+  #  if(type == "geo"){ # take this condition out once tested for feature space as well
+  W_sample <- twosamples::wass_stat(dists[dists$what == "sample-to-sample", "dist"],
+                                    dists[dists$what == "prediction-to-sample", "dist"])
+  attr(dists, "W_sample") <- W_sample
+  if(!is.null(testdata)){
+    W_test <- twosamples::wass_stat(dists[dists$what == "test-to-sample", "dist"],
+                                    dists[dists$what == "prediction-to-sample", "dist"])
+    attr(dists, "W_test") <- W_test
   }
+  if(!is.null(cvfolds)){
+    W_CV <- twosamples::wass_stat(dists[dists$what == "CV-distances", "dist"],
+                                  dists[dists$what == "prediction-to-sample", "dist"])
+    attr(dists, "W_CV") <- W_CV
+  }
+  #  }
 
-  out <- list(p,dists)
-  names(out) <- c("plot","distances")
-  return(out)
+  return(dists)
 }
 
 
@@ -382,7 +402,7 @@ cvdistance <- function(x, cvfolds, cvtrain, type, variables){
           trainDist <- NA
           message("warning: no distance could be calculated for a fold.
                   Possibly because predictor values are NA")
-          }
+        }
 
         trainDist[k] <- NA
         d_cv <- c(d_cv,min(trainDist,na.rm=T))
@@ -449,36 +469,6 @@ sampleFromArea <- function(modeldomain, samplesize, type,variables,sampling){
 
 }
 
-# plot results
 
-.plot.nnd <- function(x,type,unit,stat){
-  if(unit=="km"){
-    x$dist <- x$dist/1000
-    xlabs <- "geographic distances (km)"
-  }else{
-    xlabs <- "geographic distances (m)"
-  }
 
-  if( type=="feature"){ xlabs <- "feature space distances"}
-  what <- "" #just to avoid check note
-  if (type=="feature"){unit ="unitless"}
-  if(stat=="density"){
-    p <- ggplot2::ggplot(data=x, aes(x=dist, group=what, fill=what)) +
-      ggplot2::geom_density(adjust=1.5, alpha=.4, stat=stat) +
-      ggplot2::scale_fill_discrete(name = "distance function") +
-      ggplot2::xlab(xlabs) +
-      ggplot2::theme(legend.position="bottom",
-                     plot.margin = unit(c(0,0.5,0,0),"cm"))
-  }else if(stat=="ecdf"){
-    p <- ggplot2::ggplot(data=x, aes(x=dist, group=what, col=what)) +
-      ggplot2::geom_vline(xintercept=0, lwd = 0.1) +
-      ggplot2::geom_hline(yintercept=0, lwd = 0.1) +
-      ggplot2::geom_hline(yintercept=1, lwd = 0.1) +
-      ggplot2::stat_ecdf(geom = "step", lwd = 1) +
-      ggplot2::scale_color_discrete(name = "distance function") +
-      ggplot2::xlab(xlabs) +
-      ggplot2::ylab("ECDF") +
-      ggplot2::theme(legend.position="bottom",
-                     plot.margin = unit(c(0,0.5,0,0),"cm"))
-  }
-}
+

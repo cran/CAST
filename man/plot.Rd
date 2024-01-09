@@ -6,6 +6,9 @@
 \alias{plot.aoa}
 \alias{plot.nndm}
 \alias{plot.knndm}
+\alias{plot.ffs}
+\alias{plot.geodist}
+\alias{plot.errorModel}
 \title{Plot CAST classes}
 \usage{
 \method{plot}{trainDI}(x, ...)
@@ -15,19 +18,87 @@
 \method{plot}{nndm}(x, ...)
 
 \method{plot}{knndm}(x, ...)
+
+\method{plot}{ffs}(
+  x,
+  plotType = "all",
+  palette = rainbow,
+  reverse = FALSE,
+  marker = "black",
+  size = 1.5,
+  lwd = 0.5,
+  pch = 21,
+  ...
+)
+
+\method{plot}{geodist}(x, unit = "m", stat = "density", ...)
+
+\method{plot}{errorModel}(x, ...)
 }
 \arguments{
-\item{x}{An object of type \emph{knndm}.}
+\item{x}{errorModel, see \code{\link{DItoErrormetric}}}
 
-\item{...}{other arguments.}
+\item{...}{other params}
 
 \item{samplesize}{numeric. How many prediction samples should be plotted?}
+
+\item{plotType}{character. Either "all" or "selected"}
+
+\item{palette}{A color palette}
+
+\item{reverse}{Character. Should the palette be reversed?}
+
+\item{marker}{Character. Color to mark the best models}
+
+\item{size}{Numeric. Size of the points}
+
+\item{lwd}{Numeric. Width of the error bars}
+
+\item{pch}{Numeric. Type of point marking the best models}
+
+\item{unit}{character. Only if type=="geo" and only applied to the plot. Supported: "m" or "km".}
+
+\item{stat}{"density" for density plot or "ecdf" for empirical cumulative distribution function plot.}
+}
+\value{
+a ggplot
+
+a ggplot
 }
 \description{
-Generic plot function for trainDI and aoa
+Generic plot function for CAST Classes
+
+A plotting function for a forward feature selection result.
+Each point is the mean performance of a model run. Error bars represent
+the standard errors from cross validation.
+Marked points show the best model from each number of variables until a further variable
+could not improve the results.
+If type=="selected", the contribution of the selected variables to the model
+performance is shown.
+
+Density plot of nearest neighbor distances in geographic space or feature space between training data as well as between training data and prediction locations.
+Optional, the nearest neighbor distances between training data and test data or between training data and CV iterations is shown.
+The plot can be used to check the suitability of a chosen CV method to be representative to estimate map accuracy.
+
+Plot the DI and errormetric from Cross-Validation with the modelled relationship
+}
+\examples{
+\dontrun{
+data(splotdata)
+splotdata <- st_drop_geometry(splotdata)
+ffsmodel <- ffs(splotdata[,6:16], splotdata$Species_richness, ntree = 10)
+plot(ffsmodel)
+#plot performance of selected variables only:
+plot(ffsmodel,plotType="selected")
+}
+}
+\seealso{
+\code{\link{ffs}}, \code{\link{bss}}
 }
 \author{
 Marvin Ludwig, Hanna Meyer
 
 Carles Milà
+
+Marvin Ludwig and Hanna Meyer
 }

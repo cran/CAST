@@ -34,10 +34,8 @@ For further information see: Meyer, H., & Pebesma, E. (2021). Predicting into un
 library(CAST)
 library(caret)
 library(terra)
-#library(sp)
 library(sf)
 library(viridis)
-library(latticeExtra)
 library(gridExtra)
 ```
 
@@ -56,7 +54,7 @@ RMSE = function(a, b){
 As predictor variables, a set of bioclimatic variables are used (https://www.worldclim.org). For this tutorial, they have been originally downloaded using the getData function from the raster package but cropped to an area in central Europe. The cropped data are provided in the CAST package.
 
 ```{r, message = FALSE, warning=FALSE}
-predictors <- rast(system.file("extdata","bioclim.grd",package="CAST"))
+predictors <- rast(system.file("extdata","bioclim.tif",package="CAST"))
 plot(predictors,col=viridis(100))
 ```
 
@@ -100,7 +98,6 @@ length(predictornames)-1, replace = TRUE),
 
 
 ```{r,message = FALSE, warning=FALSE}
-
 response <- generate_random_response (predictors, seed = 10)
 plot(response,col=viridis(100),main="virtual response")
 ```
@@ -308,13 +305,21 @@ The results indicate that there is a high agreement between the model CV error (
 ## Relationship between the DI and the performance measure
 
 The relationship between error and DI can be used to limit predictions to an area (within the AOA) where a required performance (e.g. RMSE, R2, Kappa, Accuracy) applies.
-This can be done using the result of calibrate_aoa which used the relationship analyzed in a window of DI values. The corresponding model (here: shape constrained additive models which is the default: Monotone increasing P-splines with the dimension of the basis used to represent the smooth term is 6 and a 2nd order penalty.) can be used to estimate the performance on a pixel level, which then allows limiting predictions using a threshold. Note that we used a multi-purpose CV to estimate the relationship between the DI and the RMSE here (see details in the paper).
+This can be done using the result of DItoErrormetric which used the relationship analyzed in a window of DI values. The corresponding model (here: shape constrained additive models which is the default: Monotone increasing P-splines with the dimension of the basis used to represent the smooth term is 6 and a 2nd order penalty.) can be used to estimate the performance on a pixel level, which then allows limiting predictions using a threshold. Note that we used a multi-purpose CV to estimate the relationship between the DI and the RMSE here (see details in the paper).
 
 ```{r,message = FALSE, warning=FALSE}
-AOA_calib <- calibrate_aoa(AOA_spatial,model,window.size = 5,length.out = 5, multiCV=TRUE,showPlot=FALSE)
-AOA_calib$plot
-plot(AOA_calib$AOA$expected_RMSE,col=viridis(100),main="expected RMSE")
-plot(AOA_calib$AOA$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
+DI_RMSE_relation <- DItoErrormetric(model, AOA_spatial$parameters, multiCV=TRUE,
+                                    window.size = 5, length.out = 5)
+plot(DI_RMSE_relation)
+
+expected_RMSE = terra::predict(AOA_spatial$DI, DI_RMSE_relation)
+
+# account for multiCV changing the DI threshold
+updated_AOA = AOA_spatial$DI > attr(DI_RMSE_relation, "AOA_threshold")
+
+
+plot(expected_RMSE,col=viridis(100),main="expected RMSE")
+plot(updated_AOA, col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
 ```
 
 # Example 2: A real-world example
@@ -326,14 +331,14 @@ To do so, we will work with the cookfarm dataset, described in e.g. [Gasch et al
 We will use soil moisture (VW) as response variable here. Hence, we're aiming at making a spatial continuous prediction based on limited measurements from data loggers.
 
 ```{r, message = FALSE, warning=FALSE}
-dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
+dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
 # calculate average of VW for each sampling site:
 dat <- aggregate(dat[,c("VW","Easting","Northing")],by=list(as.character(dat$SOURCEID)),mean)
 # create sf object from the data:
 pts <- st_as_sf(dat,coords=c("Easting","Northing"))
 
 ##### Extract Predictors for the locations of the sampling points
-studyArea <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))
+studyArea <- rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))
 st_crs(pts) <- crs(studyArea)
 trainDat <- extract(studyArea,pts,na.rm=FALSE)
 pts$ID <- 1:nrow(pts)

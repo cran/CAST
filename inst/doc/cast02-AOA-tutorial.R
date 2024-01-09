@@ -1,14 +1,12 @@
 ## ----setup, echo=FALSE--------------------------------------------------------
 knitr::opts_chunk$set(fig.width = 8.83)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----message = FALSE, warning=FALSE-------------------------------------------
 library(CAST)
 library(caret)
 library(terra)
-#library(sp)
 library(sf)
 library(viridis)
-library(latticeExtra)
 library(gridExtra)
 
 ## ----message = FALSE,include=FALSE, warning=FALSE-----------------------------
@@ -16,8 +14,8 @@ RMSE = function(a, b){
     sqrt(mean((a - b)^2,na.rm=T))
 }
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
-predictors <- rast(system.file("extdata","bioclim.grd",package="CAST"))
+## ----message = FALSE, warning=FALSE-------------------------------------------
+predictors <- rast(system.file("extdata","bioclim.tif",package="CAST"))
 plot(predictors,col=viridis(100))
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
@@ -53,7 +51,6 @@ length(predictornames)-1, replace = TRUE),
 }
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
-
 response <- generate_random_response (predictors, seed = 10)
 plot(response,col=viridis(100),main="virtual response")
 
@@ -158,7 +155,7 @@ plot(AOA_spatial$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",b
 plot(prediction_random, col=viridis(100),main="prediction for AOA \n(random CV error applies)")
 plot(AOA_random$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----message = FALSE, warning=FALSE-------------------------------------------
 grid.arrange(plot(AOA_spatial) + ggplot2::ggtitle("Spatial CV"),
              plot(AOA_random) + ggplot2::ggtitle("Random CV"), ncol = 2)
 
@@ -178,20 +175,28 @@ RMSE(values(prediction_random)[values(AOA_random$AOA)==0],
 model_random$results
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
-AOA_calib <- calibrate_aoa(AOA_spatial,model,window.size = 5,length.out = 5, multiCV=TRUE,showPlot=FALSE)
-AOA_calib$plot
-plot(AOA_calib$AOA$expected_RMSE,col=viridis(100),main="expected RMSE")
-plot(AOA_calib$AOA$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
+DI_RMSE_relation <- DItoErrormetric(model, AOA_spatial$parameters, multiCV=TRUE,
+                                    window.size = 5, length.out = 5)
+plot(DI_RMSE_relation)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
-dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
+expected_RMSE = terra::predict(AOA_spatial$DI, DI_RMSE_relation)
+
+# account for multiCV changing the DI threshold
+updated_AOA = AOA_spatial$DI > attr(DI_RMSE_relation, "AOA_threshold")
+
+
+plot(expected_RMSE,col=viridis(100),main="expected RMSE")
+plot(updated_AOA, col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
+
+## ----message = FALSE, warning=FALSE-------------------------------------------
+dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
 # calculate average of VW for each sampling site:
 dat <- aggregate(dat[,c("VW","Easting","Northing")],by=list(as.character(dat$SOURCEID)),mean)
 # create sf object from the data:
 pts <- st_as_sf(dat,coords=c("Easting","Northing"))
 
 ##### Extract Predictors for the locations of the sampling points
-studyArea <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))
+studyArea <- rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))
 st_crs(pts) <- crs(studyArea)
 trainDat <- extract(studyArea,pts,na.rm=FALSE)
 pts$ID <- 1:nrow(pts)
@@ -199,7 +204,7 @@ trainDat <- merge(trainDat,pts,by.x="ID",by.y="ID")
 # The final training dataset with potential predictors and VW:
 head(trainDat)
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----message = FALSE, warning=FALSE-------------------------------------------
 predictors <- c("DEM","NDRE.Sd","TWI","Bt")
 response <- "VW"
 
@@ -208,14 +213,14 @@ model <- train(trainDat[,predictors],trainDat[,response],
                trControl=trainControl(method="LOOCV"))
 model
 
-## ---- message = FALSE, warning=FALSE------------------------------------------
+## ----message = FALSE, warning=FALSE-------------------------------------------
 #Predictors:
 plot(stretch(studyArea[[predictors]]))
 
 #prediction:
 prediction <- predict(studyArea,model,na.rm=TRUE)
 
-## ---- message = FALSE, warning=FALSE,  fig.show="hold", out.width="50%"-------
+## ----message = FALSE, warning=FALSE,  fig.show="hold", out.width="50%"--------
 AOA <- aoa(studyArea,model)
 
 #### Plot results:
