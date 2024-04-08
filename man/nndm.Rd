@@ -7,7 +7,8 @@
 nndm(
   tpoints,
   modeldomain = NULL,
-  ppoints = NULL,
+  predpoints = NULL,
+  space = "geographical",
   samplesize = 1000,
   sampling = "regular",
   phi = "max",
@@ -15,22 +16,23 @@ nndm(
 )
 }
 \arguments{
-\item{tpoints}{sf or sfc point object. Contains the training points samples.}
+\item{tpoints}{sf or sfc point object, or data.frame if space = "feature". Contains the training points samples.}
 
-\item{modeldomain}{sf polygon object defining the prediction area (see Details).}
+\item{modeldomain}{sf polygon object or SpatRaster defining the prediction area. Optional; alternative to predpoints (see Details).}
 
-\item{ppoints}{sf or sfc point object. Contains the target prediction points.
-Optional. Alternative to modeldomain (see Details).}
+\item{predpoints}{sf or sfc point object, or data.frame if space = "feature". Contains the target prediction points. Optional; alternative to modeldomain (see Details).}
+
+\item{space}{character. Either "geographical" or "feature". Feature space is still experimental, so use with caution.}
 
 \item{samplesize}{numeric. How many points in the modeldomain should be sampled as prediction points?
-Only required if modeldomain is used instead of ppoints.}
+Only required if modeldomain is used instead of predpoints.}
 
 \item{sampling}{character. How to draw prediction points from the modeldomain? See `sf::st_sample`.
-Only required if modeldomain is used instead of ppoints.}
+Only required if modeldomain is used instead of predpoints.}
 
 \item{phi}{Numeric. Estimate of the landscape autocorrelation range in the
-same units as the tpoints and ppoints for projected CRS, in meters for geographic CRS.
-Per default (phi="max"), the size of the prediction area is used. See Details.}
+same units as the tpoints and predpoints for projected CRS, in meters for geographic CRS.
+Per default (phi="max"), the maximum distance found in the training and prediction points is used. See Details.}
 
 \item{min_train}{Numeric between 0 and 1. Minimum proportion of training
 data that must be used in each CV fold. Defaults to 0.5 (i.e. half of the training points).}
@@ -46,8 +48,7 @@ indx_train and indx_test can directly be used as "index" and "indexOut" in
 caret's \code{\link{trainControl}} function or used to initiate a custom validation strategy in mlr3.
 }
 \description{
-This function implements the NNDM algorithm and returns the necessary
-indices to perform a NNDM LOO CV for map validation.
+This function implements the NNDM algorithm and returns the necessary indices to perform a NNDM LOO CV for map validation.
 }
 \details{
 NNDM proposes a LOO CV scheme such that the nearest neighbour distance distribution function between the test and training data during the CV process is matched to the nearest neighbour
@@ -58,13 +59,14 @@ Distances are only matched up to \emph{phi}. Beyond that range, all data points 
 When \emph{phi} is set to "max", nearest neighbor distance matching is performed for the entire prediction area. Euclidean distances are used for projected
 and non-defined CRS, great circle distances are used for geographic CRS (units in meters).
 
-The \emph{modeldomain} is a sf polygon that defines the prediction area. The function takes a regular point sample (amount defined by \emph{samplesize)} from the spatial extent.
-As an alternative use \emph{ppoints} instead of \emph{modeldomain}, if you have already defined the prediction locations (e.g. raster pixel centroids).
-When using either \emph{modeldomain} or \emph{ppoints}, we advise to plot the study area polygon and the training/prediction points as a previous step to ensure they are aligned.
+The \emph{modeldomain} is either a sf polygon that defines the prediction area, or alternatively a SpatRaster out of which a polygon,
+transformed into the CRS of the training points, is defined as the outline of all non-NA cells.
+Then, the function takes a regular point sample (amount defined by \emph{samplesize)} from the spatial extent.
+As an alternative use \emph{predpoints} instead of \emph{modeldomain}, if you have already defined the prediction locations (e.g. raster pixel centroids).
+When using either \emph{modeldomain} or \emph{predpoints}, we advise to plot the study area polygon and the training/prediction points as a previous step to ensure they are aligned.
 }
 \note{
-NNDM is a variation of LOOCV and therefore may take a long time for large training data sets.
-A k-fold variant will be implemented shortly.
+NNDM is a variation of LOOCV and therefore may take a long time for large training data sets. See \code{\link{knndm}} for a more efficient k-fold variant of the method.
 }
 \examples{
 ########################################################################
@@ -84,13 +86,14 @@ plot(pred_points, add = TRUE, col = "blue")
 plot(train_points, add = TRUE, col = "red")
 
 # Run NNDM for the whole domain, here the prediction points are known
-nndm_pred <- nndm(train_points, ppoints=pred_points)
+nndm_pred <- nndm(train_points, predpoints=pred_points)
 nndm_pred
 plot(nndm_pred)
+plot(nndm_pred, type = "simple") # For more accessible legend labels
 
 # ...or run NNDM with a known autocorrelation range of 10
 # to restrict the matching to distances lower than that.
-nndm_pred <- nndm(train_points, ppoints=pred_points, phi = 10)
+nndm_pred <- nndm(train_points, predpoints=pred_points, phi = 10)
 nndm_pred
 plot(nndm_pred)
 
@@ -111,35 +114,32 @@ plot(pred_points, add = TRUE, col = "blue")
 plot(train_points, add = TRUE, col = "red")
 
 # Run NNDM for the whole domain
-nndm_pred <- nndm(train_points, ppoints=pred_points)
+nndm_pred <- nndm(train_points, predpoints=pred_points)
 nndm_pred
 plot(nndm_pred)
+plot(nndm_pred, type = "simple") # For more accessible legend labels
 
 ########################################################################
-# Example 3: Real- world example; using a modeldomain instead of previously
-# sampled prediction locations
+# Example 3: Real- world example; using a SpatRast modeldomain instead
+# of previously sampled prediction locations
 ########################################################################
 \dontrun{
 library(sf)
 library(terra)
 
 ### prepare sample data:
-dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
-dat <- aggregate(dat[,c("DEM","TWI", "NDRE.M", "Easting", "Northing","VW")],
-   by=list(as.character(dat$SOURCEID)),mean)
+data(cookfarm)
+dat <- aggregate(cookfarm[,c("DEM","TWI", "NDRE.M", "Easting", "Northing","VW")],
+   by=list(as.character(cookfarm$SOURCEID)),mean)
 pts <- dat[,-1]
 pts <- st_as_sf(pts,coords=c("Easting","Northing"))
 st_crs(pts) <- 26911
 studyArea <- rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))
-studyArea[!is.na(studyArea)] <- 1
-studyArea <- as.polygons(studyArea, values = FALSE, na.all = TRUE) |>
-    st_as_sf() |>
-    st_union()
 pts <- st_transform(pts, crs = st_crs(studyArea))
-plot(studyArea)
-plot(st_geometry(pts), add = TRUE, col = "red")
+terra::plot(studyArea[["DEM"]])
+terra::plot(vect(pts), add = T)
 
-nndm_folds <- nndm(pts, modeldomain= studyArea)
+nndm_folds <- nndm(pts, modeldomain = studyArea)
 plot(nndm_folds)
 
 #use for cross-validation:
@@ -155,6 +155,47 @@ model_nndm <- train(dat[,c("DEM","TWI", "NDRE.M")],
 global_validation(model_nndm)
 }
 
+########################################################################
+# Example 4: Real- world example; nndm in feature space
+########################################################################
+\dontrun{
+library(sf)
+library(terra)
+library(ggplot2)
+
+# Prepare the splot dataset for Chile
+data(splotdata)
+splotdata <- splotdata[splotdata$Country == "Chile",]
+
+# Select a series of bioclimatic predictors
+predictors <- c("bio_1", "bio_4", "bio_5", "bio_6",
+               "bio_8", "bio_9", "bio_12", "bio_13",
+               "bio_14", "bio_15", "elev")
+
+predictors_sp <- terra::rast(system.file("extdata", "predictors_chile.tif", package="CAST"))
+
+# Data visualization
+terra::plot(predictors_sp[["bio_1"]])
+terra::plot(vect(splotdata), add = T)
+
+# Run and visualise the nndm results
+nndm_folds <- nndm(splotdata[,predictors], modeldomain = predictors_sp, space = "feature")
+plot(nndm_folds)
+
+
+#use for cross-validation:
+library(caret)
+ctrl <- trainControl(method="cv",
+   index=nndm_folds$indx_train,
+   indexOut=nndm_folds$indx_test,
+   savePredictions='final')
+model_nndm <- train(st_drop_geometry(splotdata[,predictors]),
+   splotdata$Species_richness,
+   method="rf",
+   trControl = ctrl)
+global_validation(model_nndm)
+
+}
 }
 \references{
 \itemize{

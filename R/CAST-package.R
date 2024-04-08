@@ -7,11 +7,10 @@
 #' in view to their contribution to the spatial model performance.
 #' CAST further includes functionality to estimate the (spatial) area of applicability of prediction models
 #' by analysing the similarity between new data and training data.
-#' Methods are described in Meyer et al. (2018); Meyer et al. (2019); Meyer and Pebesma (2021); Milà et al. (2022); Meyer and Pebesma (2022).
+#' Methods are described in Meyer et al. (2018); Meyer et al. (2019); Meyer and Pebesma (2021); Milà et al. (2022); Meyer and Pebesma (2022); Linnenbrink et al. (2023).
 #' @name CAST
-#' @docType package
 #' @title 'caret' Applications for Spatial-Temporal Models
-#' @author Hanna Meyer, Carles Milà, Marvin Ludwig, Lan Linnenbrink
+#' @author Hanna Meyer, Carles Milà, Marvin Ludwig, Jan Linnenbrink, Fabian Schumacher
 #' @references
 #' \itemize{
 #' \item Linnenbrink, J., Milà, C., Ludwig, M., and Meyer, H.: kNNDM: k-fold Nearest Neighbour Distance Matching Cross-Validation for map accuracy estimation, EGUsphere [preprint], https://doi.org/10.5194/egusphere-2023-1308, 2023.
@@ -23,11 +22,11 @@
 #' }
 #'
 #' @import caret
-#' @importFrom stats sd dist na.omit lm predict quantile na.exclude complete.cases
-#' @importFrom utils combn
+#' @importFrom stats sd dist na.omit lm predict quantile na.exclude complete.cases median
+#' @importFrom utils combn txtProgressBar setTxtProgressBar
 #' @importFrom grDevices rainbow
 #' @importFrom graphics axis plot segments
 #' @keywords package
 #' @aliases CAST-package
 #'
-NULL
+"_PACKAGE"

@@ -27,9 +27,9 @@
 #' Meyer, H., Reudenbach, C., Hengl, T., Katurji, M., Nauß, T. (2018): Improving performance of spatio-temporal machine learning models using forward feature selection and target-oriented validation. Environmental Modelling & Software 101: 1-9.
 #' @examples
 #' \dontrun{
-#' dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
+#' data(cookfarm)
 #' ### Prepare for 10-fold Leave-Location-and-Time-Out cross validation
-#' indices <- CreateSpacetimeFolds(dat,"SOURCEID","Date")
+#' indices <- CreateSpacetimeFolds(cookfarm,"SOURCEID","Date")
 #' str(indices)
 #' ### Prepare for 10-fold Leave-Location-Out cross validation
 #' indices <- CreateSpacetimeFolds(dat,spacevar="SOURCEID")
@@ -47,6 +47,9 @@ CreateSpacetimeFolds <- function(x,spacevar=NA,timevar=NA,
   x <- data.frame(x)
   ### if classification is used, make sure that classes are equally distributed across folds
   if(!is.na(class)){
+    if(is.numeric(x[,class])){
+      stop("argument class only works for categorical data")
+      }
     unit <- unique(x[,c(spacevar,class)])
     unit$CAST_fold <- createFolds(unit[,which(names(unit)==class)],k = k,list=FALSE)
     #x <- merge(x,unit,by.x=c(spacevar,class),by.y=c(spacevar,class),all.x=TRUE,sort=FALSE)

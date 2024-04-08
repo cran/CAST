@@ -14,6 +14,7 @@
 #' @param tuneLength see \code{\link{train}}
 #' @param tuneGrid see \code{\link{train}}
 #' @param seed A random number used for model training
+#' @param cores Numeric. If > 2, mclapply will be used. see \code{\link{mclapply}}
 #' @param verbose Logical. Should information about the progress be printed?
 #' @param ... arguments passed to the classification or regression routine
 #' (such as randomForest).
@@ -29,7 +30,10 @@
 #' of the currently best model. The process stops if none of the remaining
 #' variables increases the model performance when added to the current best model.
 #'
-#' The internal cross validation can be run in parallel. See information
+#' The forward feature selection can be run in parallel with forking on Linux systems (mclapply).
+#' Each fork computes a model, which drastically speeds up the runtime -
+#' especially of the initial predictor search.
+#' The internal cross validation can be run in parallel on all systems. See information
 #' on parallel processing of carets train functions for details.
 #'
 #' Using withinSE will favour models with less variables and
@@ -60,10 +64,14 @@
 #' }
 #' @examples
 #' \dontrun{
-#' data(iris)
-#' ffsmodel <- ffs(iris[,1:4],iris$Species)
+#' data(splotdata)
+#' ffsmodel <- ffs(splotdata[,6:12], splotdata$Species_richness, ntree = 20)
+#'
 #' ffsmodel$selectedvars
 #' ffsmodel$selectedvars_perf
+#' plot(ffsmodel)
+#' #or only selected variables:
+#' plot(ffsmodel,plotType="selected")
 #'}
 #'
 #' # or perform model with target-oriented validation (LLO CV)
@@ -72,15 +80,16 @@
 #' #is shown here.
 #'
 #' \dontrun{
-#' #run the model on three cores:
+#' # run the model on three cores (see vignette for details):
 #' library(doParallel)
 #' library(lubridate)
 #' cl <- makeCluster(3)
 #' registerDoParallel(cl)
 #'
 #' #load and prepare dataset:
-#' dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
-#' trainDat <- dat[dat$altitude==-0.3&year(dat$Date)==2012&week(dat$Date)%in%c(13:14),]
+#' data(cookfarm)
+#' trainDat <- cookfarm[cookfarm$altitude==-0.3&
+#'   year(cookfarm$Date)==2012&week(cookfarm$Date)%in%c(13:14),]
 #'
 #' #visualize dataset:
 #' ggplot(data = trainDat, aes(x=Date, y=VW)) + geom_line(aes(colour=SOURCEID))
@@ -109,6 +118,24 @@
 #' model
 #' stopCluster(cl)
 #'}
+#'
+#'\dontrun{
+#'## on linux machines, you can also run the ffs in parallel with forks:
+#' data("splotdata")
+#' spatial_cv = CreateSpacetimeFolds(splotdata, spacevar = "Biome", k = 5)
+#' ctrl <- trainControl(method="cv",index = spatial_cv$index)
+#'
+#'ffsmodel <- ffs(predictors = splotdata[,6:16],
+#'                response = splotdata$Species_richness,
+#'                tuneLength = 1,
+#'                method = "rf",
+#'                trControl = ctrl,
+#'                ntree = 20,
+#'                seed = 1,
+#'                cores = 4)
+#'}
+#'
+#'
 #' @export ffs
 #' @aliases ffs
 
@@ -125,9 +152,25 @@ ffs <- function (predictors,
                  tuneGrid = NULL,
                  seed = sample(1:1000, 1),
                  verbose=TRUE,
+                 cores = 1,
                  ...){
-  trControl$returnResamp <- "final"
-  trControl$savePredictions <- "final"
+
+
+
+  # Init ----------------
+
+  ## Input Checks ------------------------------
+
+  if(inherits(predictors, "sf")){
+    predictors = sf::st_drop_geometry(predictors)
+  }
+
+  if(cores > 1 & .Platform$OS.type != "unix"){
+    warning("Parallel computations of ffs only implemented on unix systems. cores is set to 1")
+    cores <- 1
+  }
+
+
   if(inherits(response,"character")){
     response <- factor(response)
     if(metric=="RMSE"){
@@ -135,27 +178,25 @@ ffs <- function (predictors,
       maximize <- TRUE
     }
   }
-  if (trControl$method=="LOOCV"){
-    if (withinSE==TRUE){
-      print("warning: withinSE is set to FALSE as no SE can be calculated using method LOOCV")
-      withinSE <- FALSE
-    }}
 
-  if(globalval){
-    if (withinSE==TRUE){
-      print("warning: withinSE is set to FALSE as no SE can be calculated using global validation")
-      withinSE <- FALSE
-    }}
+  if (trControl$method=="LOOCV" & withinSE){
+    warning("withinSE is set to FALSE as no SE can be calculated using method LOOCV")
+    withinSE <- FALSE
+  }
+
+  if(globalval & withinSE){
+    warning("withinSE is set to FALSE as no SE can be calculated using global validation")
+    withinSE <- FALSE
+  }
+
+  ## Define helper functions ---------------
 
   se <- function(x){sd(x, na.rm = TRUE)/sqrt(length(na.exclude(x)))}
-  n <- length(names(predictors))
 
-  acc <- 0
-  perf_all <- data.frame(matrix(ncol=length(predictors)+3,
-                                nrow=choose(n, minVar)+(n-minVar)*(n-minVar+1)/2))
-  names(perf_all) <- c(paste0("var",1:length(predictors)),metric,"SE","nvar")
-  if(maximize) evalfunc <- function(x){max(x,na.rm=TRUE)}
-  if(!maximize) evalfunc <- function(x){min(x,na.rm=TRUE)}
+  evalfunc = ifelse(maximize,
+                    function(x){max(x,na.rm=TRUE)},
+                    function(x){min(x,na.rm=TRUE)})
+
   isBetter <- function (actmodelperf,bestmodelperf,
                         bestmodelperfSE=NULL,
                         maximization=FALSE,
@@ -169,81 +210,193 @@ ffs <- function (predictors,
     }
     return(result)
   }
-  #### chose initial best model from all combinations of two variables
+
+
+  ## Initialize Variables --------------------------
+
+  trControl$returnResamp <- "final"
+  trControl$savePredictions <- "final"
+  n <- length(names(predictors))
+  acc <- 0
+  perf_all <- data.frame(matrix(ncol=length(predictors)+3,
+                                nrow=choose(n, minVar)+(n-minVar)*(n-minVar+1)/2))
+  names(perf_all) <- c(paste0("var",1:length(predictors)),metric,"SE","nvar")
   minGrid <- t(data.frame(combn(names(predictors),minVar)))
-  for (i in 1:nrow(minGrid)){
-    if (verbose){
-      print(paste0("model using ",paste0(minGrid[i,],collapse=","), " will be trained now..." ))
-    }
-    set.seed(seed)
-    #adaptations for pls:
-    tuneGrid_orig <- tuneGrid
-    tuneLength_orig <- tuneLength
-    if(method=="pls"&!is.null(tuneGrid)&any(tuneGrid$ncomp>minVar)){
-      tuneGrid <- data.frame(ncomp=tuneGrid[tuneGrid$ncomp<=minVar,])
-      if(verbose){
-        print(paste0("note: maximum ncomp is ", minVar))
+
+
+  # Computation -----------------------------------------------
+  ## Step 1: Search best initial variables -----
+  ## parallel ----------
+  if(cores > 1){
+
+    initial_models = parallel::mclapply(X = 1:nrow(minGrid), mc.cores = cores, FUN = function(i){
+
+      set.seed(seed)
+      #adaptations for pls:
+      tuneGrid_orig <- tuneGrid
+      tuneLength_orig <- tuneLength
+      if(method=="pls"&!is.null(tuneGrid)&any(tuneGrid$ncomp>minVar)){
+        tuneGrid <- data.frame(ncomp=tuneGrid[tuneGrid$ncomp<=minVar,])
+        if(verbose){
+          print(paste0("note: maximum ncomp is ", minVar))
+        }
       }
-    }
-    #adaptations for tuning of ranger:
-    if(method=="ranger"&!is.null(tuneGrid)&any(tuneGrid$mtry>minVar)){
-      tuneGrid$mtry <- minVar
-      if(verbose){
-        print("invalid value for mtry. Reset to valid range.")
+      #adaptations for tuning of ranger:
+      if(method=="ranger"&!is.null(tuneGrid)&any(tuneGrid$mtry>minVar)){
+        tuneGrid$mtry <- minVar
+        if(verbose){
+          print("invalid value for mtry. Reset to valid range.")
+        }
       }
-    }
-    # adaptations for RF and minVar == 1 - tuneLength must be 1, only one mtry possible
-    if(minVar==1 & method%in%c("ranger", "rf") & is.null(tuneGrid)){
-      tuneLength <- minVar
-    }
+      # adaptations for RF and minVar == 1 - tuneLength must be 1, only one mtry possible
+      if(minVar==1 & method%in%c("ranger", "rf") & is.null(tuneGrid)){
+        tuneLength <- minVar
+      }
 
-    #train model:
-    model <- caret::train(predictors[minGrid[i,]],
-                          response,
-                          method=method,
-                          metric=metric,
-                          trControl=trControl,
-                          tuneLength = tuneLength,
-                          tuneGrid = tuneGrid,
-                          ...)
+      #train model:
+      model <- caret::train(predictors[minGrid[i,]],
+                            response,
+                            method=method,
+                            metric=metric,
+                            trControl=trControl,
+                            tuneLength = tuneLength,
+                            tuneGrid = tuneGrid)
+                            #...)
 
-    tuneGrid <- tuneGrid_orig
-    tuneLength <- tuneLength_orig
 
-    ### compare the model with the currently best model
-    if (globalval){
-      perf_stats <- global_validation(model)[names(global_validation(model))==metric]
-    }else{
-      perf_stats <- model$results[,names(model$results)==metric]
-    }
-    actmodelperf <- evalfunc(perf_stats)
-    actmodelperfSE <- se(
-      sapply(unique(model$resample$Resample),
-             FUN=function(x){mean(model$resample[model$resample$Resample==x,
-                                                 metric],na.rm=TRUE)}))
-    if (i == 1){
-      bestmodelperf <- actmodelperf
-      bestmodelperfSE <- actmodelperfSE
-      bestmodel <- model
-    } else{
-      if (isBetter(actmodelperf,bestmodelperf,maximization=maximize,withinSE=FALSE)){
+      tuneGrid <- tuneGrid_orig
+      tuneLength <- tuneLength_orig
+
+
+      if (globalval){
+        perf_stats <- global_validation(model)[names(global_validation(model))==metric]
+      }else{
+        perf_stats <- model$results[,names(model$results)==metric]
+      }
+
+      result = as.data.frame(t(minGrid[i,]))
+      result$actmodelperf <- evalfunc(perf_stats)
+      result$actmodelperfSE <- se(
+        sapply(unique(model$resample$Resample),
+               FUN=function(x){mean(model$resample[model$resample$Resample==x,
+                                                   metric],na.rm=TRUE)}))
+
+      return(result)
+
+    })
+    initial_models = do.call(rbind, initial_models)
+
+
+    ## save best model from initial models
+
+    best_rowindex = ifelse(maximize, which.max(initial_models$actmodelperf), which.min(initial_models$actmodelperf))
+    bestmodelperf <- initial_models$actmodelperf[best_rowindex]
+    bestmodelperfSE <- initial_models$actmodelperfSE[best_rowindex]
+    best_predictors <- as.character(initial_models[best_rowindex, 1:minVar])
+
+    # best minVar model has to be retrained
+    #
+    #
+    bestmodel <- caret::train(predictors[,best_predictors],
+                              response,
+                              method=method,
+                              metric=metric,
+                              trControl=trControl,
+                              tuneLength = tuneLength,
+                              tuneGrid = tuneGrid)
+                              #...)
+
+
+    acc = nrow(minGrid)
+
+    # patching perf_all
+    perf_all[1:acc, 1:minVar] <- initial_models[,1:minVar]
+    perf_all[1:acc, (ncol(perf_all)-2):(ncol(perf_all)-1)] <- initial_models[,(ncol(initial_models)-1):ncol(initial_models)]
+    perf_all$nvar[1:nrow(minGrid)] <- minVar
+
+
+
+  }else{
+    ## unparallel  -------------
+
+    for (i in 1:nrow(minGrid)){
+      if (verbose){
+        print(paste0("model using ",paste0(minGrid[i,],collapse=","), " will be trained now..." ))
+      }
+      set.seed(seed)
+      #adaptations for pls:
+      tuneGrid_orig <- tuneGrid
+      tuneLength_orig <- tuneLength
+      if(method=="pls"&!is.null(tuneGrid)&any(tuneGrid$ncomp>minVar)){
+        tuneGrid <- data.frame(ncomp=tuneGrid[tuneGrid$ncomp<=minVar,])
+        if(verbose){
+          print(paste0("note: maximum ncomp is ", minVar))
+        }
+      }
+      #adaptations for tuning of ranger:
+      if(method=="ranger"&!is.null(tuneGrid)&any(tuneGrid$mtry>minVar)){
+        tuneGrid$mtry <- minVar
+        if(verbose){
+          print("invalid value for mtry. Reset to valid range.")
+        }
+      }
+      # adaptations for RF and minVar == 1 - tuneLength must be 1, only one mtry possible
+      if(minVar==1 & method%in%c("ranger", "rf") & is.null(tuneGrid)){
+        tuneLength <- minVar
+      }
+
+      #train model:
+      model <- caret::train(predictors[minGrid[i,]],
+                            response,
+                            method=method,
+                            metric=metric,
+                            trControl=trControl,
+                            tuneLength = tuneLength,
+                            tuneGrid = tuneGrid,
+                            ...)
+
+      tuneGrid <- tuneGrid_orig
+      tuneLength <- tuneLength_orig
+
+      ### compare the model with the currently best model
+      if (globalval){
+        perf_stats <- global_validation(model)[names(global_validation(model))==metric]
+      }else{
+        perf_stats <- model$results[,names(model$results)==metric]
+      }
+      actmodelperf <- evalfunc(perf_stats)
+      actmodelperfSE <- se(
+        sapply(unique(model$resample$Resample),
+               FUN=function(x){mean(model$resample[model$resample$Resample==x,
+                                                   metric],na.rm=TRUE)}))
+      if (i == 1){
         bestmodelperf <- actmodelperf
         bestmodelperfSE <- actmodelperfSE
         bestmodel <- model
+      } else{
+        if (isBetter(actmodelperf,bestmodelperf,maximization=maximize,withinSE=FALSE)){
+          bestmodelperf <- actmodelperf
+          bestmodelperfSE <- actmodelperfSE
+          bestmodel <- model
+        }
+      }
+      acc <- acc+1
+
+      variablenames <- names(model$trainingData)[-length(names(model$trainingData))]
+      perf_all[acc,1:length(variablenames)] <- variablenames
+      perf_all[acc,(length(predictors)+1):ncol(perf_all)] <- c(actmodelperf,actmodelperfSE,length(variablenames))
+      if(verbose){
+        print(paste0("maximum number of models that still need to be trained: ",
+                     round(choose(n, minVar)+(n-minVar)*(n-minVar+1)/2-acc,0)))
       }
     }
-    acc <- acc+1
 
-    variablenames <- names(model$trainingData)[-length(names(model$trainingData))]
-    perf_all[acc,1:length(variablenames)] <- variablenames
-    perf_all[acc,(length(predictors)+1):ncol(perf_all)] <- c(actmodelperf,actmodelperfSE,length(variablenames))
-    if(verbose){
-      print(paste0("maximum number of models that still need to be trained: ",
-                   round(choose(n, minVar)+(n-minVar)*(n-minVar+1)/2-acc,0)))
-    }
+
   }
-  #### increase the number of predictors by one (try all combinations)
-  #and test if model performance increases
+
+
+  ## both --------
+
   selectedvars <- names(bestmodel$trainingData)[-which(
     names(bestmodel$trainingData)==".outcome")]
 
@@ -262,6 +415,152 @@ ffs <- function (predictors,
     print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
                  " with ",metric," ",round(selectedvars_perf,3)))
   }
+
+  ## Step 2: Append more variables ------
+  # increase the number of predictors by one (try all combinations)
+  # and test if model performance increases
+  # k: amount of "additional variables" left after initial search
+  # for each k: search best additional predictor
+
+  ## parallel -----
+
+  if(cores > 1){
+  for(k in 1:(length(names(predictors))-minVar)){
+    startvars <- names(bestmodel$trainingData)[-which(
+      names(bestmodel$trainingData)==".outcome")]
+    nextvars <- names(predictors)[-which(
+      names(predictors)%in%startvars)]
+
+    if(verbose){
+    print(paste0("Searching for additional variable ", minVar + k, " now. ",
+                 length(nextvars), " potential predictors are available:"))
+    print(nextvars)
+    }
+
+
+    # search best additional variable in parallel
+    next_models <- parallel::mclapply(1:length(nextvars), mc.cores = cores, FUN = function(i){
+
+
+      set.seed(seed)
+
+      #adaptation for pls:
+      tuneGrid_orig <- tuneGrid
+      if(method=="pls"&!is.null(tuneGrid)&any(tuneGrid$ncomp>ncol(predictors[,c(startvars,nextvars[i])]))){
+        tuneGrid<- data.frame(ncomp=tuneGrid[tuneGrid$ncomp<=ncol(predictors[,c(startvars,nextvars[i])]),])
+        if(verbose){
+          print(paste0("note: maximum ncomp is ", ncol(predictors[,c(startvars,nextvars[i])])))
+        }}
+      #adaptation for ranger:
+      if(method=="ranger"&!is.null(tuneGrid)&any(tuneGrid$mtry>ncol(predictors[,c(startvars,nextvars[i])]))){
+        tuneGrid$mtry[tuneGrid$mtry>ncol(predictors[,c(startvars,nextvars[i])])] <- ncol(predictors[,c(startvars,nextvars[i])])
+        if(verbose){
+          print("invalid value for mtry. Reset to valid range.")
+        }
+      }
+
+      model <- caret::train(predictors[,c(startvars,nextvars[i])],
+                            response,
+                            method = method,
+                            metric=metric,
+                            trControl = trControl,
+                            tuneLength = tuneLength,
+                            tuneGrid = tuneGrid,
+                            ...)
+      tuneGrid <- tuneGrid_orig
+
+
+
+      if (globalval){
+        perf_stats <- global_validation(model)[names(global_validation(model))==metric]
+      }else{
+        perf_stats <- model$results[,names(model$results)==metric]
+      }
+
+
+      startvars
+      result = as.data.frame(t(startvars))
+      result$nextvar = nextvars[i]
+      result$actmodelperf <- evalfunc(perf_stats)
+      result$actmodelperfSE <- se(
+        sapply(unique(model$resample$Resample),
+               FUN=function(x){mean(model$resample[model$resample$Resample==x,
+                                                   metric],na.rm=TRUE)}))
+
+      return(result)
+
+    })
+
+    next_models = do.call(rbind, next_models)
+
+
+    ## best next_model
+    best_next_rowindex = ifelse(maximize,
+                           which.max(next_models[,(ncol(next_models)-1)]),
+                           which.min(next_models[,(ncol(next_models)-1)]))
+
+    better = isBetter(actmodelperf = next_models$actmodelperf[best_next_rowindex],
+                      bestmodelperf = bestmodelperf,
+                      bestmodelperfSE = bestmodelperfSE,
+                      maximization = maximize, withinSE = withinSE)
+
+
+
+    # patching perf_all
+    perf_all[(acc+1):(acc+length(nextvars)), 1:(minVar+k)] <- next_models[,1:(minVar+k)]
+    perf_all[(acc+1):(acc+length(nextvars)), (ncol(perf_all)-2):(ncol(perf_all)-1)] <- next_models[,(ncol(next_models)-1):ncol(next_models)]
+    perf_all$nvar[(acc+1):(acc+length(nextvars))] <- minVar+k
+
+    if(better){
+      # update best model stats
+      bestmodelperf = next_models$actmodelperf[best_next_rowindex]
+      bestmodelperfSE = next_models$actmodelperfSE[best_next_rowindex]
+      best_predictors = as.character(next_models[best_next_rowindex, 1:(minVar+k)])
+
+      selectedvars_perf = c(selectedvars_perf, bestmodelperf)
+      selectedvars_SE = c(selectedvars_SE, bestmodelperfSE)
+
+
+      bestmodel <- caret::train(predictors[,best_predictors],
+                                response,
+                                method=method,
+                                metric=metric,
+                                trControl=trControl,
+                                tuneLength = tuneLength,
+                                tuneGrid = tuneGrid,
+                                ...)
+
+
+      acc = acc+nrow(next_models)
+
+
+    }else{
+      # not better: return model and stats
+      message(paste0("Note: No increase in performance found using more than ",
+                     length(startvars), " variables"))
+      bestmodel$selectedvars <- best_predictors
+      bestmodel$selectedvars_perf <- selectedvars_perf
+      bestmodel$selectedvars_perf_SE <- selectedvars_SE
+      bestmodel$perf_all <- perf_all
+      bestmodel$perf_all <- bestmodel$perf_all[!apply(is.na(bestmodel$perf_all), 1, all),]
+      bestmodel$perf_all <- bestmodel$perf_all[colSums(!is.na(bestmodel$perf_all)) > 0]
+      bestmodel$minVar <- minVar
+      bestmodel$type <- "ffs"
+      class(bestmodel) <- c("ffs", "train")
+      return(bestmodel)
+
+    }
+
+
+
+
+  }# end of k loop
+
+
+
+
+  }else{
+    ## unparallel -----
   for (k in 1:(length(names(predictors))-minVar)){
     startvars <- names(bestmodel$trainingData)[-which(
       names(bestmodel$trainingData)==".outcome")]
@@ -369,21 +668,10 @@ ffs <- function (predictors,
     }
   }
 
-  # Old version that is not using global_validation:
-  #    if (maximize){
-  #      selectedvars_perf <- c(selectedvars_perf,max(bestmodel$results[,metric]))
-  #      if(verbose){
-  #        print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
-  #                     " with ", metric," ",round(max(bestmodel$results[,metric]),3)))
-  #      }
-  #    }
-  #    if (!maximize){
-  #      selectedvars_perf <- c(selectedvars_perf,min(bestmodel$results[,metric]))
-  #      if(verbose){
-  #        print(paste0(paste0("vars selected: ",paste(selectedvars, collapse = ',')),
-  #                     " with ",metric," ",round(min(bestmodel$results[,metric]),3)))
-  #      }
-  #    }
+  }
+## return best model --------
+
+
 
   bestmodel$selectedvars <- selectedvars
   bestmodel$selectedvars_perf <- selectedvars_perf
@@ -399,3 +687,5 @@ ffs <- function (predictors,
   class(bestmodel) <- c("ffs", "train")
   return(bestmodel)
 }
+
+

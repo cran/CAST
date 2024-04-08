@@ -38,6 +38,11 @@ print.aoa = function(x, ...){
   cat("DI:\n")
   print(x$DI)
 
+  if ("LPD" %in% names(x)) {
+    cat("LPD:\n")
+    print(x$LPD)
+  }
+
   cat("AOA:\n")
   print(x$AOA)
 

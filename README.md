@@ -11,11 +11,14 @@ https://hannameyer.github.io/CAST/
 
 * [Introduction to CAST](https://hannameyer.github.io/CAST/articles/cast01-CAST-intro.html)
 
-* [Area of applicability of spatial prediction models](https://hannameyer.github.io/CAST/articles/cast02-AOA-tutorial.html)
+* [Visualization of nearest neighbor distance distributions](https://hannameyer.github.io/CAST/articles/cast02-plotgeodist.html)
 
-* [Area of applicability in parallel](https://hannameyer.github.io/CAST/articles/cast03-AOA-parallel.html)
+* [Nearest neighbor distance matching Cross-validation in CAST](https://hannameyer.github.io/CAST/articles/cast03-CV.html)
 
-* [Visualization of nearest neighbor distance distributions](https://hannameyer.github.io/CAST/articles/cast04-plotgeodist.html)
+* [Area of applicability of spatial prediction models](https://hannameyer.github.io/CAST/articles/cast04-AOA-tutorial.html)
+
+* [Improve computation time of CAST methods](https://hannameyer.github.io/CAST/articles/cast05-parallel.html)
+
 
 * The talk from the OpenGeoHub summer school 2019 on spatial validation and variable selection:
 https://www.youtube.com/watch?v=mkHlmYEzsVQ.
@@ -32,6 +35,8 @@ https://doi.org/10.1111/2041-210X.13851
 
 * Linnenbrink, J., Milà, C., Ludwig, M., and Meyer, H.: kNNDM (2023): k-fold Nearest Neighbour Distance Matching Cross-Validation for map accuracy estimation. EGUsphere [preprint]. 
 https://doi.org/10.5194/egusphere-2023-1308
+
+* Meyer, H., Reudenbach, C., Hengl, T., Katurji, M., Nauss, T. (2018): Improving performance of spatio-temporal machine learning models using forward feature selection and target-oriented validation. Environmental Modelling & Software, 101, 1-9. https://doi.org/10.1016/j.envsoft.2017.12.001
 
 ### Spatial variable selection
 * Meyer, H., Reudenbach, C., Hengl, T., Katurji, M., Nauss, T. (2018): Improving performance of spatio-temporal machine learning models using forward feature selection and target-oriented validation. Environmental Modelling & Software, 101, 1-9. https://doi.org/10.1016/j.envsoft.2017.12.001

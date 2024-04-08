@@ -12,7 +12,9 @@ trainDI(
   CVtest = NULL,
   CVtrain = NULL,
   method = "L2",
-  useWeight = TRUE
+  useWeight = TRUE,
+  LPD = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -36,6 +38,10 @@ Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.}
 \item{method}{Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.}
 
 \item{useWeight}{Logical. Only if a model is given. Weight variables according to importance in the model?}
+
+\item{LPD}{Logical. Indicates whether the local point density should be calculated or not.}
+
+\item{verbose}{Logical. Print progress or not?}
 }
 \value{
 A list of class \code{trainDI} containing:
@@ -48,10 +54,13 @@ A list of class \code{trainDI} containing:
  \item{trainDist_avrgmean}{The mean of trainDist_avrg. Used for normalizing the DI}
  \item{trainDI}{Dissimilarity Index of the training data}
  \item{threshold}{The DI threshold used for inside/outside AOA}
+ \item{trainLPD}{LPD of the training data}
+ \item{avrgLPD}{Average LPD of the training data}
 }
 \description{
-This function estimates the Dissimilarity Index (DI) of
+This function estimates the Dissimilarity Index (DI)
 within the training data set used for a prediction model.
+Optionally, the local point density can also be calculated.
 Predictors can be weighted based on the internal
 variable importance of the machine learning algorithm used for model training.
 }
@@ -65,43 +74,35 @@ or to facilitate a parallelization of \code{\link{aoa}} by avoiding a repeated c
 library(sf)
 library(terra)
 library(caret)
-library(viridis)
-library(ggplot2)
+library(CAST)
 
 # prepare sample data:
-dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
-dat <- aggregate(dat[,c("VW","Easting","Northing")],by=list(as.character(dat$SOURCEID)),mean)
-pts <- st_as_sf(dat,coords=c("Easting","Northing"))
-pts$ID <- 1:nrow(pts)
-set.seed(100)
-pts <- pts[1:30,]
-studyArea <- rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))[[1:8]]
-trainDat <- extract(studyArea,pts,na.rm=FALSE)
-trainDat <- merge(trainDat,pts,by.x="ID",by.y="ID")
-
-# visualize data spatially:
-plot(studyArea)
-plot(studyArea$DEM)
-plot(pts[,1],add=TRUE,col="black")
+data("splotdata")
+splotdata = st_drop_geometry(splotdata)
 
 # train a model:
 set.seed(100)
-variables <- c("DEM","NDRE.Sd","TWI")
-model <- train(trainDat[,which(names(trainDat)\%in\%variables)],
-trainDat$VW, method="rf", importance=TRUE, tuneLength=1,
-trControl=trainControl(method="cv",number=5,savePredictions=T))
-print(model) #note that this is a quite poor prediction model
-prediction <- predict(studyArea,model,na.rm=TRUE)
+model <- caret::train(splotdata[,6:16],
+                      splotdata$Species_richness,
+                      importance=TRUE, tuneLength=1, ntree = 15, method = "rf",
+                      trControl = trainControl(method="cv", number=5, savePredictions=T))
+# variable importance is used for scaling predictors
 plot(varImp(model,scale=FALSE))
 
-#...then calculate the DI of the trained model:
+# calculate the DI of the trained model:
 DI = trainDI(model=model)
 plot(DI)
 
-# the DI can now be used to compute the AOA:
-AOA = aoa(studyArea, model = model, trainDI = DI)
+#...or calculate the DI and LPD of the trained model:
+# DI = trainDI(model=model, LPD = TRUE)
+
+# the DI can now be used to compute the AOA (here with LPD):
+studyArea = rast(system.file("extdata/predictors_chile.tif", package = "CAST"))
+AOA = aoa(studyArea, model = model, trainDI = DI, LPD = TRUE, maxLPD = 1)
 print(AOA)
 plot(AOA)
+plot(AOA$AOA)
+plot(AOA$LPD)
 }
 
 }
@@ -114,5 +115,5 @@ Estimating the area of applicability of spatial prediction models.
 \code{\link{aoa}}
 }
 \author{
-Hanna Meyer, Marvin Ludwig
+Hanna Meyer, Marvin Ludwig, Fabian Schumacher
 }

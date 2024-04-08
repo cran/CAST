@@ -1,11 +1,12 @@
 Package: CAST
 Type: Package
 Title: 'caret' Applications for Spatial-Temporal Models
-Version: 0.9.0
+Version: 1.0.0
 Authors@R: c(person("Hanna", "Meyer", email = "hanna.meyer@uni-muenster.de", role = c("cre", "aut")),
              person("Carles", "Milà", role = c("aut")),
              person("Marvin", "Ludwig", role = c("aut")),
              person("Jan", "Linnenbrink", role = c("aut")),
+             person("Fabian", "Schumacher", role = c("aut")),
              person("Philipp", "Otto", role = c("ctb")),
              person("Chris", "Reudenbach", role = c("ctb")),
              person("Thomas", "Nauss", role = c("ctb")),
@@ -14,6 +15,7 @@ Author: Hanna Meyer [cre, aut],
   Carles Milà [aut],
   Marvin Ludwig [aut],
   Jan Linnenbrink [aut],
+  Fabian Schumacher [aut],
   Philipp Otto [ctb],
   Chris Reudenbach [ctb],
   Thomas Nauss [ctb],
@@ -27,14 +29,15 @@ Encoding: UTF-8
 LazyData: false
 Depends: R (>= 4.1.0)
 Imports: caret, stats, utils, ggplot2, graphics, FNN, plyr, zoo,
-        methods, grDevices, data.table, lattice, sf, forcats
+        methods, grDevices, data.table, sf, forcats
 Suggests: doParallel, randomForest, lubridate, sp, knitr, mapview,
         rmarkdown, scales, parallel, gridExtra, viridis, stars, scam,
-        terra, rnaturalearth, MASS, twosamples, testthat (>= 3.0.0)
-RoxygenNote: 7.2.3
+        terra, rnaturalearth, MASS, twosamples, RColorBrewer, geodata,
+        tmap, PCAmixdata, gower, clustMixType, testthat (>= 3.0.0)
+RoxygenNote: 7.3.1
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2024-01-08 13:20:41 UTC; hanna
+Packaged: 2024-04-04 12:14:49 UTC; hanna
 Repository: CRAN
-Date/Publication: 2024-01-09 05:40:02 UTC
+Date/Publication: 2024-04-08 11:53:05 UTC

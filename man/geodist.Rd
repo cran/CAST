@@ -6,7 +6,7 @@
 \usage{
 geodist(
   x,
-  modeldomain,
+  modeldomain = NULL,
   type = "geo",
   cvfolds = NULL,
   cvtrain = NULL,
@@ -14,7 +14,9 @@ geodist(
   preddata = NULL,
   samplesize = 2000,
   sampling = "regular",
-  variables = NULL
+  variables = NULL,
+  timevar = NULL,
+  time_unit = "auto"
 )
 }
 \arguments{
@@ -39,6 +41,10 @@ locations within the modeldomain rather than the whole area.}
 \item{sampling}{character. How to draw prediction samples? See \link[sp]{spsample}. Use sampling = "Fibonacci" for global applications.}
 
 \item{variables}{character vector defining the predictor variables used if type="feature. If not provided all variables included in modeldomain are used.}
+
+\item{timevar}{optional. character. Column that indicates the date. Only used if type="time".}
+
+\item{time_unit}{optional. Character. Unit for temporal distances See ?difftime.Only used if type="time".}
 }
 \value{
 A data.frame containing the distances. Unit of returned geographic distances is meters. attributes contain W statistic between prediction area and either sample data, CV folds or test data. See details.
@@ -50,7 +56,7 @@ Optional, the nearest neighbor distances between training data and test data or 
 \details{
 The modeldomain is a sf polygon or a raster that defines the prediction area. The function takes a regular point sample (amount defined by samplesize) from the spatial extent.
     If type = "feature", the argument modeldomain (and if provided then also the testdata and/or preddata) has to include predictors. Predictor values for x, testdata and preddata are optional if modeldomain is a raster.
-    If not provided they are extracted from the modeldomain rasterStack.
+    If not provided they are extracted from the modeldomain rasterStack. If some predictors are categorical (i.e., of class factor or character), gower distances will be used.
     W statistic describes the match between the distributions. See Linnenbrink et al (2023) for further details.
 }
 \note{
@@ -70,7 +76,10 @@ studyArea <- rnaturalearth::ne_countries(continent = "South America", returnclas
 
 ########### Distance between training data and new data:
 dist <- geodist(splotdata, studyArea)
+# With density functions
 plot(dist)
+# Or ECDFs (relevant for nndm and knnmd methods)
+plot(dist, stat="ecdf")
 
 ########### Distance between training data, new data and test data (here Chile):
 plot(splotdata[,"Country"])
@@ -81,7 +90,10 @@ plot(dist)
 ########### Distance between training data, new data and CV folds:
 folds <- createFolds(1:nrow(splotdata), k=3, returnTrain=FALSE)
 dist <- geodist(x=splotdata, modeldomain=studyArea, cvfolds=folds)
+# Using density functions
 plot(dist)
+# Using ECDFs (relevant for nndm and knnmd methods)
+plot(dist, stat="ecdf")
 
 ########### Distances in the feature space:
 predictors <- terra::rast(system.file("extdata","predictors_chile.tif", package="CAST"))
@@ -97,6 +109,22 @@ dist <- geodist(x = splotdata[splotdata$Country != "Chile",],
                 type = "feature",
                 variables=c("bio_1","bio_12", "elev"))
 plot(dist)
+
+############Distances in temporal space
+library(lubridate)
+library(ggplot2)
+data(cookfarm)
+dat <- st_as_sf(cookfarm,coords=c("Easting","Northing"))
+st_crs(dat) <- 26911
+trainDat <- dat[dat$altitude==-0.3&lubridate::year(dat$Date)==2010,]
+predictionDat <- dat[dat$altitude==-0.3&lubridate::year(dat$Date)==2011,]
+trainDat$week <- lubridate::week(trainDat$Date)
+cvfolds <- CreateSpacetimeFolds(trainDat,timevar = "week")
+
+dist <- geodist(trainDat,preddata = predictionDat,cvfolds = cvfolds$indexOut,
+   type="time",time_unit="days")
+plot(dist)+ xlim(0,10)
+
 
 ############ Example for a random global dataset
 ############ (refer to figure in Meyer and Pebesma 2022)
@@ -130,5 +158,5 @@ plot(dist) + scale_x_log10(labels=round)
 \code{\link{nndm}} \code{\link{knndm}}
 }
 \author{
-Hanna Meyer, Edzer Pebesma, Marvin Ludwig
+Hanna Meyer, Edzer Pebesma, Marvin Ludwig, Jan Linnenbrink
 }

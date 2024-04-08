@@ -14,7 +14,7 @@ of spatial prediction models and allows for spatial variable selection to select
 in view to their contribution to the spatial model performance.
 CAST further includes functionality to estimate the (spatial) area of applicability of prediction models
 by analysing the similarity between new data and training data.
-Methods are described in Meyer et al. (2018); Meyer et al. (2019); Meyer and Pebesma (2021); Milà et al. (2022); Meyer and Pebesma (2022).
+Methods are described in Meyer et al. (2018); Meyer et al. (2019); Meyer and Pebesma (2021); Milà et al. (2022); Meyer and Pebesma (2022); Linnenbrink et al. (2023).
 }
 \details{
 'caret' Applications for Spatio-Temporal models
@@ -29,7 +29,15 @@ Methods are described in Meyer et al. (2018); Meyer et al. (2019); Meyer and Peb
 \item Meyer, H., Reudenbach, C., Hengl, T., Katurji, M., Nauß, T. (2018): Improving performance of spatio-temporal machine learning models using forward feature selection and target-oriented validation. Environmental Modelling & Software 101: 1-9.
 }
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/HannaMeyer/CAST}
+  \item \url{https://hannameyer.github.io/CAST/}
+}
+
+}
 \author{
-Hanna Meyer, Carles Milà, Marvin Ludwig, Lan Linnenbrink
+Hanna Meyer, Carles Milà, Marvin Ludwig, Jan Linnenbrink, Fabian Schumacher
 }
 \keyword{package}

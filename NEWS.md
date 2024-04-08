@@ -1,3 +1,23 @@
+# `CAST` 1.0.0
+* new features:
+  * calculate local point density within AOA
+  * option of spatial error profiles (errorProfiles with variable="geodist")
+  * normalize_DI for a more intuitive interpretation
+  * geodist allows calculating temporal distances
+  * ffs now can be run in parallel (Linux only)
+  * vignette "Cross-validation methods in CAST"
+  * knndm in feature space (experimental)
+  * nndm in feature space (experimental)
+* modifications:
+  * function DItoErrormetric renamed to errorProfiles and allows for other dissimilarity measures
+  * Improvement and homogenization of plotting methods for nndm, knndm and geodist objects
+  * aoa and trainDI `weight` now allows list input
+  * vignette on Introduction to CAST updated
+* deprecated:
+  *plot_geodist (replaced by plot.geodist)
+  *plot_ffs (replaced by plot.ffs)
+  *calibrate_aoa (replaced by errorProfiles)
+  
 # `CAST` 0.9.0
 * new features:
   * CAST functions now return classes with generic plotting and printing

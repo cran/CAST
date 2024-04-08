@@ -1,7 +1,8 @@
 #' Calculate Dissimilarity Index of training data
 #' @description
-#' This function estimates the Dissimilarity Index (DI) of
+#' This function estimates the Dissimilarity Index (DI)
 #' within the training data set used for a prediction model.
+#' Optionally, the local point density can also be calculated.
 #' Predictors can be weighted based on the internal
 #' variable importance of the machine learning algorithm used for model training.
 #' @note
@@ -22,6 +23,8 @@
 #' Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
+#' @param LPD Logical. Indicates whether the local point density should be calculated or not.
+#' @param verbose Logical. Print progress or not?
 #'
 #' @seealso \code{\link{aoa}}
 #' @importFrom graphics boxplot
@@ -37,13 +40,15 @@
 #'  \item{trainDist_avrgmean}{The mean of trainDist_avrg. Used for normalizing the DI}
 #'  \item{trainDI}{Dissimilarity Index of the training data}
 #'  \item{threshold}{The DI threshold used for inside/outside AOA}
+#'  \item{trainLPD}{LPD of the training data}
+#'  \item{avrgLPD}{Average LPD of the training data}
 #'
 #'
 #'
 #' @export trainDI
 #'
 #' @author
-#' Hanna Meyer, Marvin Ludwig
+#' Hanna Meyer, Marvin Ludwig, Fabian Schumacher
 #'
 #' @references Meyer, H., Pebesma, E. (2021): Predicting into unknown space?
 #' Estimating the area of applicability of spatial prediction models.
@@ -55,43 +60,35 @@
 #' library(sf)
 #' library(terra)
 #' library(caret)
-#' library(viridis)
-#' library(ggplot2)
+#' library(CAST)
 #'
 #' # prepare sample data:
-#' dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
-#' dat <- aggregate(dat[,c("VW","Easting","Northing")],by=list(as.character(dat$SOURCEID)),mean)
-#' pts <- st_as_sf(dat,coords=c("Easting","Northing"))
-#' pts$ID <- 1:nrow(pts)
-#' set.seed(100)
-#' pts <- pts[1:30,]
-#' studyArea <- rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))[[1:8]]
-#' trainDat <- extract(studyArea,pts,na.rm=FALSE)
-#' trainDat <- merge(trainDat,pts,by.x="ID",by.y="ID")
-#'
-#' # visualize data spatially:
-#' plot(studyArea)
-#' plot(studyArea$DEM)
-#' plot(pts[,1],add=TRUE,col="black")
+#' data("splotdata")
+#' splotdata = st_drop_geometry(splotdata)
 #'
 #' # train a model:
 #' set.seed(100)
-#' variables <- c("DEM","NDRE.Sd","TWI")
-#' model <- train(trainDat[,which(names(trainDat)%in%variables)],
-#' trainDat$VW, method="rf", importance=TRUE, tuneLength=1,
-#' trControl=trainControl(method="cv",number=5,savePredictions=T))
-#' print(model) #note that this is a quite poor prediction model
-#' prediction <- predict(studyArea,model,na.rm=TRUE)
+#' model <- caret::train(splotdata[,6:16],
+#'                       splotdata$Species_richness,
+#'                       importance=TRUE, tuneLength=1, ntree = 15, method = "rf",
+#'                       trControl = trainControl(method="cv", number=5, savePredictions=T))
+#' # variable importance is used for scaling predictors
 #' plot(varImp(model,scale=FALSE))
 #'
-#' #...then calculate the DI of the trained model:
+#' # calculate the DI of the trained model:
 #' DI = trainDI(model=model)
 #' plot(DI)
 #'
-#' # the DI can now be used to compute the AOA:
-#' AOA = aoa(studyArea, model = model, trainDI = DI)
+#' #...or calculate the DI and LPD of the trained model:
+#' # DI = trainDI(model=model, LPD = TRUE)
+#'
+#' # the DI can now be used to compute the AOA (here with LPD):
+#' studyArea = rast(system.file("extdata/predictors_chile.tif", package = "CAST"))
+#' AOA = aoa(studyArea, model = model, trainDI = DI, LPD = TRUE, maxLPD = 1)
 #' print(AOA)
 #' plot(AOA)
+#' plot(AOA$AOA)
+#' plot(AOA$LPD)
 #' }
 #'
 
@@ -103,7 +100,9 @@ trainDI <- function(model = NA,
                     CVtest = NULL,
                     CVtrain = NULL,
                     method="L2",
-                    useWeight=TRUE){
+                    useWeight = TRUE,
+                    LPD = FALSE,
+                    verbose = TRUE){
 
   # get parameters if they are not provided in function call-----
   if(is.null(train)){train = aoa_get_train(model)}
@@ -120,17 +119,11 @@ trainDI <- function(model = NA,
       weight <- t(data.frame(rep(1,length(variables))))
       names(weight) <- variables
     }
-  }else{ #check if manually given weights are correct. otherwise ignore (set to 1):
-    if(nrow(weight)!=1||ncol(weight)!=length(variables)){
-      message("variable weights are not correctly specified and will be ignored. See ?aoa")
-      weight <- t(data.frame(rep(1,length(variables))))
-      names(weight) <- variables
-    }
-    weight <- weight[,na.omit(match(variables, names(weight)))]
-    if (any(weight<0)){
-      weight[weight<0]<-0
-      message("negative weights were set to 0")
-    }
+  }else{
+
+
+    weight <- user_weights(weight, variables)
+
   }
 
   # get CV folds from model or from parameters
@@ -184,15 +177,24 @@ trainDI <- function(model = NA,
     S_inv <- MASS::ginv(S)
   }
 
+  if (verbose) {
+    message("Computing DI of training data...")
+    pb <- txtProgressBar(min = 0,
+                         max = nrow(train),
+                         style = 3)
+  }
+
   for(i in seq(nrow(train))){
 
     # distance to all other training data (for average)
-    trainDistAll   <- .alldistfun(t(train[i,]), train,  method, S_inv=S_inv)[-1]
-    trainDist_avrg <- append(trainDist_avrg, mean(trainDistAll, na.rm = TRUE))
+    ## redundant distance calculation (removed 13.03.24)
+    #trainDistAll   <- .alldistfun(t(train[i,]), train,  method, S_inv=S_inv)[-1]
+    #trainDist_avrg <- append(trainDist_avrg, mean(trainDistAll, na.rm = TRUE))
 
     # calculate  distance to other training data:
     trainDist      <- matrix(.alldistfun(t(matrix(train[i,])), train, method, sorted = FALSE, S_inv))
     trainDist[i]   <- NA
+    trainDist_avrg <- append(trainDist_avrg, mean(trainDist, na.rm = TRUE))
 
 
     # mask of any data that are not used for training for the respective data point (using CV)
@@ -215,6 +217,13 @@ trainDI <- function(model = NA,
     }else{
       trainDist_min <- append(trainDist_min, min(trainDist, na.rm = TRUE))
     }
+    if (verbose) {
+      setTxtProgressBar(pb, i)
+    }
+  }
+
+  if (verbose) {
+    close(pb)
   }
   trainDist_avrgmean <- mean(trainDist_avrg,na.rm=TRUE)
 
@@ -234,7 +243,58 @@ trainDI <- function(model = NA,
   }
 
   # note: previous versions of CAST derived the threshold this way:
-  #thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
+  # thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
+
+
+  # calculate trainLPD and avrgLPD according to the CV folds
+  if (LPD == TRUE) {
+    if (verbose) {
+      message("Computing LPD of training data...")
+      pb <- txtProgressBar(min = 0,
+                           max = nrow(train),
+                           style = 3)
+    }
+
+    trainLPD <- c()
+    for (j in  seq(nrow(train))) {
+
+      # calculate  distance to other training data:
+      trainDist      <- .alldistfun(t(matrix(train[j,])), train, method, sorted = FALSE, S_inv)
+      DItrainDist <- trainDist/trainDist_avrgmean
+      DItrainDist[j]   <- NA
+
+      # mask of any data that are not used for training for the respective data point (using CV)
+      whichfold <- NA
+      if(!is.null(CVtrain)&!is.null(CVtest)){
+        whichfold <- as.numeric(which(lapply(CVtest,function(x){any(x==j)})==TRUE)) # index of the fold where i is held back
+        if(length(whichfold)>1){stop("a datapoint is used for testing in more than one fold. currently this option is not implemented")}
+        if(length(whichfold)!=0){ # in case that a data point is never used for testing
+          DItrainDist[!seq(nrow(train))%in%CVtrain[[whichfold]]] <- NA # everything that is not in the training data for i is ignored
+        }
+        if(length(whichfold)==0){#in case that a data point is never used for testing, the distances for that point are ignored
+          DItrainDist <- NA
+        }
+      }
+
+      #######################################
+
+      if (length(whichfold)==0){
+        trainLPD <- append(trainLPD, NA)
+      } else {
+        trainLPD <- append(trainLPD, sum(DItrainDist[,1] < thres, na.rm = TRUE))
+      }
+      if (verbose) {
+        setTxtProgressBar(pb, j)
+      }
+    }
+
+    if (verbose) {
+      close(pb)
+    }
+
+    # Average LPD in trainData
+    avrgLPD <- round(mean(trainLPD))
+  }
 
 
   # Return: trainDI Object -------
@@ -251,6 +311,11 @@ trainDI <- function(model = NA,
     threshold = thres,
     method = method
   )
+
+  if (LPD == TRUE) {
+    aoa_results$trainLPD <- trainLPD
+    aoa_results$avrgLPD <- avrgLPD
+  }
 
   class(aoa_results) = "trainDI"
 
@@ -332,6 +397,39 @@ aoa_get_weights = function(model, variables){
   return(weight)
 
 }
+
+
+
+# check user weight input
+# make sure this function outputs a data.frame with
+# one row and columns named after the variables
+
+user_weights = function(weight, variables){
+
+  # list input support
+  if(inherits(weight, "list")){
+    # check if all list entries are in variables
+    weight = as.data.frame(weight)
+  }
+
+
+  #check if manually given weights are correct. otherwise ignore (set to 1):
+  if(nrow(weight)!=1  || !all(variables %in% names(weight))){
+    message("variable weights are not correctly specified and will be ignored. See ?aoa")
+    weight <- t(data.frame(rep(1,length(variables))))
+    names(weight) <- variables
+  }
+  weight <- weight[,na.omit(match(variables, names(weight)))]
+  if (any(weight<0)){
+    weight[weight<0]<-0
+    message("negative weights were set to 0")
+  }
+
+  return(weight)
+
+}
+
+
 
 
 # Get trainingdata from train object
@@ -437,7 +535,6 @@ aoa_get_variables <- function(variables, model, train){
       return(t(sapply(1:dim(point)[1],
                       function(y) sapply(1:dim(reference)[1],
                                          function(x) sqrt( t(point[y,] - reference[x,]) %*% S_inv %*% (point[y,] - reference[x,]) )))))
-
     }
   }
 }

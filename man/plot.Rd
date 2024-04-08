@@ -13,11 +13,11 @@
 \usage{
 \method{plot}{trainDI}(x, ...)
 
-\method{plot}{aoa}(x, samplesize = 1000, ...)
+\method{plot}{aoa}(x, samplesize = 1000, variable = "DI", ...)
 
-\method{plot}{nndm}(x, ...)
+\method{plot}{nndm}(x, type = "strict", stat = "ecdf", ...)
 
-\method{plot}{knndm}(x, ...)
+\method{plot}{knndm}(x, type = "strict", stat = "ecdf", ...)
 
 \method{plot}{ffs}(
   x,
@@ -42,6 +42,13 @@
 
 \item{samplesize}{numeric. How many prediction samples should be plotted?}
 
+\item{variable}{character. Variable for which to generate the density plot. 'DI' or 'LPD'}
+
+\item{type}{String, defaults to "strict" to show the original nearest neighbour distance definitions in the legend.
+Alternatively, set to "simple" to have more intuitive labels.}
+
+\item{stat}{"density" for density plot or "ecdf" for empirical cumulative distribution function plot.}
+
 \item{plotType}{character. Either "all" or "selected"}
 
 \item{palette}{A color palette}
@@ -57,8 +64,6 @@
 \item{pch}{Numeric. Type of point marking the best models}
 
 \item{unit}{character. Only if type=="geo" and only applied to the plot. Supported: "m" or "km".}
-
-\item{stat}{"density" for density plot or "ecdf" for empirical cumulative distribution function plot.}
 }
 \value{
 a ggplot
@@ -76,11 +81,12 @@ could not improve the results.
 If type=="selected", the contribution of the selected variables to the model
 performance is shown.
 
-Density plot of nearest neighbor distances in geographic space or feature space between training data as well as between training data and prediction locations.
+Density plot of nearest neighbor distances in geographic space or feature space between training data as well as between training data and
+prediction locations.
 Optional, the nearest neighbor distances between training data and test data or between training data and CV iterations is shown.
 The plot can be used to check the suitability of a chosen CV method to be representative to estimate map accuracy.
 
-Plot the DI and errormetric from Cross-Validation with the modelled relationship
+Plot the DI/LPD and errormetric from Cross-Validation with the modeled relationship
 }
 \examples{
 \dontrun{
@@ -92,13 +98,8 @@ plot(ffsmodel)
 plot(ffsmodel,plotType="selected")
 }
 }
-\seealso{
-\code{\link{ffs}}, \code{\link{bss}}
-}
 \author{
 Marvin Ludwig, Hanna Meyer
 
 Carles Milà
-
-Marvin Ludwig and Hanna Meyer
 }
