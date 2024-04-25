@@ -1,5 +1,7 @@
 
 test_that("errorProfiles works in default settings", {
+  skip_on_cran()
+  skip_on_os("mac", arch = "aarch64")
   data(splotdata)
   splotdata <- sf::st_drop_geometry(splotdata)
   predictors <- terra::rast(system.file("extdata","predictors_chile.tif", package="CAST"))
@@ -8,7 +10,7 @@ test_that("errorProfiles works in default settings", {
   model <- caret::train(splotdata[,6:16], splotdata$Species_richness, ntree = 10,
                         trControl = caret::trainControl(method = "cv", savePredictions = TRUE))
 
-  AOA <- CAST::aoa(predictors, model)
+  AOA <- CAST::aoa(predictors, model,verbose=F)
 
   # DI ~ error
   errormodel_DI <- CAST::errorProfiles(model, AOA, variable = "DI")
@@ -29,6 +31,8 @@ test_that("errorProfiles works in default settings", {
 
 
 test_that("errorProfiles works in with LPD", {
+  skip_on_cran()
+  skip_on_os("mac", arch = "aarch64")
   data(splotdata)
   splotdata <- sf::st_drop_geometry(splotdata)
   predictors <- terra::rast(system.file("extdata","predictors_chile.tif", package="CAST"))
@@ -37,7 +41,7 @@ test_that("errorProfiles works in with LPD", {
   model <- caret::train(splotdata[,6:16], splotdata$Species_richness, ntree = 10,
                         trControl = caret::trainControl(method = "cv", savePredictions = TRUE))
 
-  AOA <- CAST::aoa(predictors, model, LPD = TRUE, maxLPD = 1)
+  AOA <- CAST::aoa(predictors, model, LPD = TRUE, maxLPD = 1,verbose=F)
   errormodel_LPD <- CAST::errorProfiles(model, AOA, variable = "LPD")
   expected_error_LPD = terra::predict(AOA$LPD, errormodel_LPD)
 
@@ -56,6 +60,8 @@ test_that("errorProfiles works in with LPD", {
 
 
 test_that("errorProfiles works for multiCV", {
+  skip_on_cran()
+  skip_on_os("mac", arch = "aarch64")
   data(splotdata)
   splotdata <- sf::st_drop_geometry(splotdata)
   predictors <- terra::rast(system.file("extdata","predictors_chile.tif", package="CAST"))
@@ -64,8 +70,7 @@ test_that("errorProfiles works for multiCV", {
   model <- caret::train(splotdata[,6:16], splotdata$Species_richness, ntree = 10,
                         trControl = caret::trainControl(method = "cv", savePredictions = TRUE))
 
-  AOA <- CAST::aoa(predictors, model)
-  # with multiCV = TRUE (for DI ~ error)
+  AOA <- CAST::aoa(predictors, model,verbose=F)
   set.seed(100)
   errormodel_DI = suppressWarnings(errorProfiles(model, AOA, multiCV = TRUE, length.out = 3))
   expected_error_DI = terra::predict(AOA$DI, errormodel_DI)

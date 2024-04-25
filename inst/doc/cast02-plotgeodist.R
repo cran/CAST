@@ -13,7 +13,7 @@ library(geodata)
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 seed <- 10 # random realization
-samplesize <- 300 # how many samples will be used?
+samplesize <- 250 # how many samples will be used?
 nparents <- 20 #For clustered samples: How many clusters? 
 radius <- 500000 # For clustered samples: What is the radius of a cluster?
 
@@ -118,7 +118,7 @@ plot(dist_rand_sp, unit = "km")+scale_x_log10(labels=round)
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
 
 
-nndmfolds_clstr <- nndm(pts_clustered, modeldomain=co.ee, samplesize = 2000)
+nndmfolds_clstr <- knndm(pts_clustered, modeldomain=co.ee, samplesize = 2000)
 dist_clstr <- geodist(pts_clustered,co.ee,
                            sampling = "Fibonacci",
                            cvfolds = nndmfolds_clstr$indx_test, 
@@ -128,31 +128,12 @@ plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
 
-nndmfolds_rand <- nndm(pts_random_co,  modeldomain=co.ee, samplesize = 2000)
+nndmfolds_rand <- knndm(pts_random_co,  modeldomain=co.ee, samplesize = 2000)
 dist_rand <- geodist(pts_random_co,co.ee,
                           sampling = "Fibonacci",
                           cvfolds = nndmfolds_rand$indx_test, 
                           cvtrain = nndmfolds_rand$indx_train)
 plot(dist_rand, unit = "km")+scale_x_log10(labels=round)
-
-
-## ----message = FALSE, warning=FALSE, results='hide'---------------------------
-
-knndmfolds_clstr <- knndm(pts_clustered, modeldomain=co.ee, samplesize = 2000)
-pts_clustered$knndmCV <- as.character(knndmfolds_clstr$clusters)
-
-ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
-  geom_sf(data = pts_clustered, aes(color=knndmCV),size=0.5, shape=3) +
-  scale_color_manual(values=rainbow(length(unique(pts_clustered$knndmCV))))+
-  guides(fill = FALSE, col = FALSE) +
-  labs(x = NULL, y = NULL)+ ggtitle("spatial fold membership by color")
-
-
-dist_clstr <- geodist(pts_clustered,co.ee,
-                           sampling = "Fibonacci",
-                           cvfolds = knndmfolds_clstr$indx_test, 
-                           cvtrain = knndmfolds_clstr$indx_train)
-plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)
 
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------

@@ -12,7 +12,7 @@
 
 <meta name="author" content="Hanna Meyer" />
 
-<meta name="date" content="2024-04-04" />
+<meta name="date" content="2024-04-25" />
 
 <title>4. Area of applicability of spatial prediction models</title>
 
@@ -341,7 +341,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <h1 class="title toc-ignore">4. Area of applicability of spatial
 prediction models</h1>
 <h4 class="author">Hanna Meyer</h4>
-<h4 class="date">2024-04-04</h4>
+<h4 class="date">2024-04-25</h4>
 
 
 <div id="TOC">
@@ -761,7 +761,7 @@ in the aoa function, where the folds used for cross-validation are
 automatically extracted from the model.</p>
 <div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a>AOA_spatial <span class="ot">&lt;-</span> <span class="fu">aoa</span>(predictors, model, <span class="at">LPD =</span> <span class="cn">TRUE</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
 <span id="cb29-2"><a href="#cb29-2" tabindex="-1"></a></span>
-<span id="cb29-3"><a href="#cb29-3" tabindex="-1"></a>AOA_random <span class="ot">&lt;-</span> <span class="fu">aoa</span>(predictors, model_random, <span class="at">LPD =</span> <span class="cn">TRUE</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<span id="cb29-3"><a href="#cb29-3" tabindex="-1"></a>AOA_random <span class="ot">&lt;-</span> <span class="fu">aoa</span>(predictors, model_random, <span class="at">LPD =</span> <span class="cn">FALSE</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
 <div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" tabindex="-1"></a><span class="fu">plot</span>(AOA_spatial<span class="sc">$</span>DI,<span class="at">col=</span><span class="fu">viridis</span>(<span class="dv">100</span>),<span class="at">main=</span><span class="st">&quot;DI&quot;</span>)</span>
 <span id="cb30-2"><a href="#cb30-2" tabindex="-1"></a><span class="fu">plot</span>(AOA_spatial<span class="sc">$</span>LPD,<span class="at">col=</span><span class="fu">viridis</span>(<span class="dv">100</span>),<span class="at">main=</span><span class="st">&quot;LPD&quot;</span>)</span>
 <span id="cb30-3"><a href="#cb30-3" tabindex="-1"></a><span class="fu">plot</span>(prediction, <span class="at">col=</span><span class="fu">viridis</span>(<span class="dv">100</span>),<span class="at">main=</span><span class="st">&quot;prediction for AOA </span><span class="sc">\n</span><span class="st">(spatial CV error applies)&quot;</span>)</span>

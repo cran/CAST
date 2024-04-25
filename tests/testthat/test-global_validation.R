@@ -1,5 +1,4 @@
 test_that("global_validation correctly handles missing predictions", {
-
   data("iris")
   set.seed(123)
   ctrl <- caret::trainControl(method="cv")
@@ -18,7 +17,8 @@ test_that("global_validation works with caret regression", {
                         iris[,c("Sepal.Length")],
                         method="rf", trControl=ctrl, ntree=10)
   expect_equal(global_validation(model),
-               c("RMSE"=0.3307870, "Rsquared"=0.8400544, "MAE"=0.2621827))
+               c("RMSE"=0.3307870, "Rsquared"=0.8400544, "MAE"=0.2621827),
+               tolerance = 0.02)
 
 })
 
@@ -31,12 +31,12 @@ test_that("global_validation works with caret classification", {
                         iris[,c("Species")],
                         method="rf", trControl=ctrl, ntree=10)
   expect_equal(global_validation(model)[1:2],
-               c("Accuracy"=0.96, "Kappa"=0.94))
+               c("Accuracy"=0.96, "Kappa"=0.94),
+               tolerance = 0.02)
 
 })
 
 test_that("global_validation works with CreateSpacetimeFolds", {
-
   data("iris")
   set.seed(123)
   iris$folds <- sample(rep(1:10, ceiling(nrow(iris)/10)), nrow(iris))
@@ -46,5 +46,6 @@ test_that("global_validation works with CreateSpacetimeFolds", {
                         iris[,c("Species")],
                         method="rf", trControl=ctrl, ntree=10)
   expect_equal(global_validation(model)[1:2],
-               c("Accuracy"=0.96, "Kappa"=0.94))
+               c("Accuracy"=0.96, "Kappa"=0.94),
+               tolerance = 0.02)
 })

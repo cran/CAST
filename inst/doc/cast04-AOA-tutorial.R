@@ -147,7 +147,7 @@ prediction <- predict(predictors,model,na.rm=TRUE)
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 AOA_spatial <- aoa(predictors, model, LPD = TRUE, verbose = FALSE)
 
-AOA_random <- aoa(predictors, model_random, LPD = TRUE, verbose = FALSE)
+AOA_random <- aoa(predictors, model_random, LPD = FALSE, verbose = FALSE)
 
 ## ----message = FALSE, warning=FALSE,  fig.show="hold", out.width="50%"--------
 plot(AOA_spatial$DI,col=viridis(100),main="DI")

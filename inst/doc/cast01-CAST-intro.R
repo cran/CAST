@@ -97,7 +97,7 @@ ffsmodel <- ffs(st_drop_geometry(splotdata)[,predictors],
                     method="rf", 
                     tuneGrid=data.frame("mtry"=2),
                     verbose=FALSE,
-                    ntree=50,
+                    ntree=25, #make it faster for this tutorial
                     trControl=trainControl(method="cv",
                                            index = indices_knndm$indx_train,
                                            savePredictions = "final"))
