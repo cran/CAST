@@ -1,7 +1,7 @@
 Package: CAST
 Type: Package
 Title: 'caret' Applications for Spatial-Temporal Models
-Version: 1.0.1
+Version: 1.0.2
 Authors@R: c(person("Hanna", "Meyer", email = "hanna.meyer@uni-muenster.de", role = c("cre", "aut")),
              person("Carles", "Milà", role = c("aut")),
              person("Marvin", "Ludwig", role = c("aut")),
@@ -28,16 +28,18 @@ URL: https://github.com/HannaMeyer/CAST,
 Encoding: UTF-8
 LazyData: false
 Depends: R (>= 4.1.0)
+BugReports: https://github.com/HannaMeyer/CAST/issues/
 Imports: caret, stats, utils, ggplot2, graphics, FNN, plyr, zoo,
-        methods, grDevices, data.table, sf, forcats
-Suggests: doParallel, randomForest, lubridate, sp, knitr, mapview,
+        methods, grDevices, data.table, sf, forcats, twosamples, terra,
+        sp
+Suggests: doParallel, lubridate, randomForest, knitr, geodata, mapview,
         rmarkdown, scales, parallel, gridExtra, viridis, stars, scam,
-        terra, rnaturalearth, MASS, twosamples, RColorBrewer, geodata,
-        tmap, PCAmixdata, gower, clustMixType, testthat (>= 3.0.0)
+        rnaturalearth, MASS, RColorBrewer, tmap, PCAmixdata, gower,
+        clustMixType, testthat (>= 3.0.0)
 RoxygenNote: 7.3.1
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2024-04-25 09:44:54 UTC; hanna
+Packaged: 2024-06-12 09:26:14 UTC; hanna
 Repository: CRAN
-Date/Publication: 2024-04-25 17:10:02 UTC
+Date/Publication: 2024-06-15 00:10:02 UTC

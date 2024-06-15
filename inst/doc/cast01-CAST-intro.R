@@ -14,22 +14,17 @@ library(terra)
 library(sf)
 library(caret)
 library(tmap)
-library(viridis)
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 data(splotdata)
 head(splotdata)
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
-
 wc <- worldclim_global(var="bio",res = 10,path=tempdir())
 elev <- elevation_global(res = 10, path=tempdir())
 predictors_sp <- crop(c(wc,elev),st_bbox(splotdata))
 names(predictors_sp) <- c(paste0("bio_",1:19),"elev")
 
-#note: if you prefer to work on a smaller dataset and not download any data, 
-#here is a subset of Chile:
-#predictors_sp <- rast(system.file("extdata", "predictors_chile.tif",package="CAST"))
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 plot(predictors_sp$elev)
@@ -117,7 +112,7 @@ plot(prediction_ffs)
 AOA <- aoa(predictors_sp,ffsmodel,LPD = TRUE,verbose=FALSE)
 
 tm_shape(prediction)+
-  tm_raster(title="Species \nrichness",palette=viridis(50),style="cont")+
+  tm_raster(title="Species \nrichness",style="cont")+
   tm_shape(AOA$AOA)+
   tm_raster(palette=c("1"=NA,"0"="grey"),style="cat",legend.show = FALSE)+
   tm_layout(frame=FALSE,legend.outside = TRUE)+
