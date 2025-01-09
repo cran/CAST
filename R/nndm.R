@@ -15,7 +15,7 @@
 #' Per default (phi="max"), the maximum distance found in the training and prediction points is used. See Details.
 #' @param min_train Numeric between 0 and 1. Minimum proportion of training
 #' data that must be used in each CV fold. Defaults to 0.5 (i.e. half of the training points).
-#'
+#' @param algorithm see \code{\link[FNN]{knnx.dist}} and \code{\link[FNN]{knnx.index}}
 #' @return An object of class \emph{nndm} consisting of a list of six elements:
 #' indx_train, indx_test, and indx_exclude (indices of the observations to use as
 #' training/test/excluded data in each NNDM LOO CV iteration), Gij (distances for
@@ -23,7 +23,7 @@
 #' (distances for G function construction during LOO CV), Gjstar (distances
 #' for modified G function during NNDM LOO CV), phi (landscape autocorrelation range).
 #' indx_train and indx_test can directly be used as "index" and "indexOut" in
-#' caret's \code{\link{trainControl}} function or used to initiate a custom validation strategy in mlr3.
+#' caret's \code{\link[caret]{trainControl}} function or used to initiate a custom validation strategy in mlr3.
 #'
 #' @details NNDM proposes a LOO CV scheme such that the nearest neighbour distance distribution function between the test and training data during the CV process is matched to the nearest neighbour
 #' distance distribution function between the prediction and training points. Details of the method can be found in Milà et al. (2022).
@@ -178,7 +178,7 @@
 nndm <- function(tpoints, modeldomain = NULL, predpoints = NULL,
                  space="geographical",
                  samplesize = 1000, sampling = "regular",
-                 phi = "max", min_train = 0.5){
+                 phi = "max", min_train = 0.5, algorithm="brute"){
 
 
   # 1. Preprocessing actions ----
@@ -350,7 +350,7 @@ nndm <- function(tpoints, modeldomain = NULL, predpoints = NULL,
     if(is.null(catVars)) {
 
       # Euclidean distances if no categorical variables are present
-      Gij <- c(FNN::knnx.dist(query = predpoints, data = tpoints, k = 1))
+      Gij <- c(FNN::knnx.dist(query = predpoints, data = tpoints, k = 1, algorithm=algorithm))
       tdist <- as.matrix(stats::dist(tpoints, upper = TRUE))
       diag(tdist) <- NA
       Gj <- apply(tdist, 1, function(x) min(x, na.rm=TRUE))

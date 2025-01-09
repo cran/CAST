@@ -1,4 +1,4 @@
-# CAST: Caret Applications for Spatio-Temporal models
+# CAST: Caret Applications for Spatio-Temporal models  <img src="man/figures/logo.png" align="right" alt="" width="150" />
 
 <!-- Start Badges -->
 
@@ -66,6 +66,8 @@ https://doi.org/10.5194/egusphere-2023-1308
 
 ### Area of applicability
 * Meyer, H., Pebesma, E. (2021). Predicting into unknown space? Estimating the area of applicability of spatial prediction models. Methods in Ecology and Evolution, 12, 1620– 1633. https://doi.org/10.1111/2041-210X.13650 
+
+* Schumacher, F., Knoth, C., Ludwig, M., Meyer, H. (2024): Estimation of local training data point densities to support the assessment of spatial prediction uncertainty. EGUsphere. https://doi.org/10.5194/egusphere-2024-2730.
 
 ### Applications and use cases
 * Meyer, H., Pebesma, E. (2022): Machine learning-based global maps of ecological variables and the challenge of assessing them. Nature Communications, 13. https://www.nature.com/articles/s41467-022-29838-9

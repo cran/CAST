@@ -12,7 +12,8 @@ nndm(
   samplesize = 1000,
   sampling = "regular",
   phi = "max",
-  min_train = 0.5
+  min_train = 0.5,
+  algorithm = "brute"
 )
 }
 \arguments{
@@ -36,6 +37,8 @@ Per default (phi="max"), the maximum distance found in the training and predicti
 
 \item{min_train}{Numeric between 0 and 1. Minimum proportion of training
 data that must be used in each CV fold. Defaults to 0.5 (i.e. half of the training points).}
+
+\item{algorithm}{see \code{\link[FNN]{knnx.dist}} and \code{\link[FNN]{knnx.index}}}
 }
 \value{
 An object of class \emph{nndm} consisting of a list of six elements:
@@ -45,7 +48,7 @@ G function construction between prediction and target points), Gj
 (distances for G function construction during LOO CV), Gjstar (distances
 for modified G function during NNDM LOO CV), phi (landscape autocorrelation range).
 indx_train and indx_test can directly be used as "index" and "indexOut" in
-caret's \code{\link{trainControl}} function or used to initiate a custom validation strategy in mlr3.
+caret's \code{\link[caret]{trainControl}} function or used to initiate a custom validation strategy in mlr3.
 }
 \description{
 This function implements the NNDM algorithm and returns the necessary indices to perform a NNDM LOO CV for map validation.

@@ -109,16 +109,25 @@ plot(prediction_ffs)
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 ### AOA for which the spatial CV error applies:
-AOA <- aoa(predictors_sp,ffsmodel,LPD = TRUE,verbose=FALSE)
+AOA <- aoa(predictors_sp,ffsmodel,LPD = TRUE, verbose=FALSE)
 
+# tmap3
 tm_shape(prediction)+
   tm_raster(title="Species \nrichness",style="cont")+
   tm_shape(AOA$AOA)+
   tm_raster(palette=c("1"=NA,"0"="grey"),style="cat",legend.show = FALSE)+
   tm_layout(frame=FALSE,legend.outside = TRUE)+
   tm_add_legend(type="fill",col="grey",border.lwd=0, labels="Outside \nAOA")
-    
 
+# tmap4
+# tm_shape(prediction) +
+#   tm_raster(col.scale = tm_scale_continuous(values = "-viridis"),
+#             col.legend = tm_legend(title = "Species \nrichness")) +
+#   tm_shape(AOA$AOA) +
+#   tm_raster(col.scale = tm_scale_categorical(values = c("grey", "#00000000")),
+#             col.legend = tm_legend(show = FALSE)) +
+#   tm_layout(frame = FALSE) +
+#   tm_add_legend(type="polygons", fill = "grey", labels = "Outside \nAOA")
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 plot(c(AOA$DI,AOA$LPD))

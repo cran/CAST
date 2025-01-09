@@ -15,10 +15,12 @@ aoa(
   CVtrain = NULL,
   method = "L2",
   useWeight = TRUE,
+  useCV = TRUE,
   LPD = FALSE,
   maxLPD = 1,
   indices = FALSE,
-  verbose = TRUE
+  verbose = TRUE,
+  algorithm = "brute"
 )
 }
 \arguments{
@@ -49,6 +51,8 @@ Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.}
 
 \item{useWeight}{Logical. Only if a model is given. Weight variables according to importance in the model?}
 
+\item{useCV}{Logical. Only if a model is given. Use the CV folds to calculate the DI threshold?}
+
 \item{LPD}{Logical. Indicates whether the local point density should be calculated or not.}
 
 \item{maxLPD}{numeric or integer. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples. CAUTION! If not all training samples are considered, a fitted relationship between LPD and error metric will not make sense (@seealso \code{\link{DItoErrormetric}})}
@@ -56,6 +60,8 @@ Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.}
 \item{indices}{logical. Calculate indices of the training data points that are responsible for the LPD of a new prediction location? Output is a matrix with the dimensions num(raster_cells) x maxLPD. Each row holds the indices of the training data points that are relevant for the specific LPD value at that location. Can be used in combination with exploreAOA(aoa) function from the \href{https://github.com/fab-scm/CASTvis}{CASTvis package} for a better visual interpretation of the results. Note that the matrix can be quite big for examples with a high resolution and a larger number of training samples, which can cause memory issues.}
 
 \item{verbose}{Logical. Print progress or not?}
+
+\item{algorithm}{see \code{\link[FNN]{knnx.dist}} and \code{\link[FNN]{knnx.index}}}
 }
 \value{
 An object of class \code{aoa} containing:
@@ -175,6 +181,10 @@ AOA <- aoa(studyArea,
 Meyer, H., Pebesma, E. (2021): Predicting into unknown space?
 Estimating the area of applicability of spatial prediction models.
 Methods in Ecology and Evolution 12: 1620-1633. \doi{10.1111/2041-210X.13650}
+
+Schumacher, F., Knoth, C., Ludwig, M., Meyer, H. (2024):
+Estimation of local training data point densities to support the assessment
+of spatial prediction uncertainty. EGUsphere. \doi{10.5194/egusphere-2024-2730}.
 }
 \seealso{
 \code{\link{trainDI}}, \code{\link{normalize_DI}}, \code{\link{errorProfiles}}
