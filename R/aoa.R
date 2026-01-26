@@ -30,6 +30,8 @@
 #' @param LPD Logical. Indicates whether the local point density should be calculated or not.
 #' @param maxLPD numeric or integer. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples. CAUTION! If not all training samples are considered, a fitted relationship between LPD and error metric will not make sense (@seealso \code{\link{DItoErrormetric}})
 #' @param indices logical. Calculate indices of the training data points that are responsible for the LPD of a new prediction location? Output is a matrix with the dimensions num(raster_cells) x maxLPD. Each row holds the indices of the training data points that are relevant for the specific LPD value at that location. Can be used in combination with exploreAOA(aoa) function from the \href{https://github.com/fab-scm/CASTvis}{CASTvis package} for a better visual interpretation of the results. Note that the matrix can be quite big for examples with a high resolution and a larger number of training samples, which can cause memory issues.
+#' @param parallel Logical. Parallelization the process. Only possible if LPD = TRUE. Can reduce computation time significantly.
+#' @param cores Integer or Character. Number of cores to use for the the parallelization. You can use "auto" to set your cores to \code{detectCores()/2} (see \code{\link[parallel]{detectCores}}).
 #' @param verbose Logical. Print progress or not?
 #' @param algorithm see \code{\link[FNN]{knnx.dist}} and \code{\link[FNN]{knnx.index}}
 #' @details The Dissimilarity Index (DI), the Local Data Point Density (LPD) and the corresponding Area of Applicability (AOA) are calculated.
@@ -49,15 +51,17 @@
 #'  \item{LPD}{SpatRaster, stars object or data frame. Local Point Density of newdata.}
 #'  \item{AOA}{SpatRaster, stars object or data frame. Area of Applicability of newdata. AOA has values 0 (outside AOA) and 1 (inside AOA)}
 #'
+#' @importFrom parallel detectCores makeForkCluster clusterExport parLapply stopCluster
+#'
 #' @author
 #' Hanna Meyer, Fabian Schumacher
 #' @references Meyer, H., Pebesma, E. (2021): Predicting into unknown space?
 #' Estimating the area of applicability of spatial prediction models.
 #' Methods in Ecology and Evolution 12: 1620-1633. \doi{10.1111/2041-210X.13650}
 #'
-#' Schumacher, F., Knoth, C., Ludwig, M., Meyer, H. (2024):
+#' Schumacher, F., Knoth, C., Ludwig, M., Meyer, H. (2025):
 #' Estimation of local training data point densities to support the assessment
-#' of spatial prediction uncertainty. EGUsphere. \doi{10.5194/egusphere-2024-2730}.
+#' of spatial prediction uncertainty. Geosci. Model Dev., 18, 10185–10202. \doi{10.5194/gmd-18-10185-2025}
 #'
 #' @seealso \code{\link{trainDI}}, \code{\link{normalize_DI}}, \code{\link{errorProfiles}}
 #' @examples
@@ -99,15 +103,23 @@
 #' plot(AOA)
 #' plot(AOA$AOA)
 #' #... or if preferred calculate the aoa and the LPD of the study area:
-#' AOA <- aoa(studyArea, model, LPD = TRUE, maxLPD = 1)
+#' AOA <- aoa(studyArea, model, LPD = TRUE)
+#' plot(AOA$LPD)
+#'
+#' #note that it is not required to use Random Forests. The method is model agnostic.
+#' # Let's chnage to SVM:
+#' model <- train(trainDat[,which(names(trainDat)%in%variables)],
+#' trainDat$VW, method="svmRadial", importance=TRUE, tuneLength=1,
+#' trControl=trainControl(method="cv",number=5,savePredictions=T))
+#' AOA <- aoa(studyArea, model, LPD = TRUE)
 #' plot(AOA$LPD)
 #'
 #' ####
 #' #The AOA can also be calculated without a trained model.
 #' #All variables are weighted equally in this case:
 #' ####
-#' AOA <- aoa(studyArea,train=trainDat,variables=variables)
 #'
+#' AOA <- aoa(studyArea,train=trainDat,variables=variables)
 #'
 #' ####
 #' # The AOA can also be used for models trained via mlr3 (parameters have to be assigned manually):
@@ -158,6 +170,8 @@ aoa <- function(newdata,
                 LPD = FALSE,
                 maxLPD = 1,
                 indices = FALSE,
+                parallel = FALSE,
+                cores = 4,
                 verbose = TRUE,
                 algorithm = "brute") {
 
@@ -208,6 +222,10 @@ aoa <- function(newdata,
     } else {
       stop("maxLPD must be a number. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.")
     }
+  }
+
+  if (parallel & Sys.info()["sysname"] != "Linux") {
+    stop("Paralellization only works for UNIX-alike systems. Please use single core computation.")
   }
 
 
@@ -308,6 +326,8 @@ aoa <- function(newdata,
       S <- stats::cov(train_scaled)
     }
     S_inv <- MASS::ginv(S)
+  } else {
+    S_inv <- NULL # S_inv dummy variable to not crash on parallization
   }
 
   if (calc_LPD == FALSE) {
@@ -325,39 +345,97 @@ aoa <- function(newdata,
       message("Computing DI and LPD of new data...")
     }
 
-    if (verbose) {
-      pb <- txtProgressBar(min = 0,
-                           max = nrow(newdataCC),
-                           style = 3)
-    }
-
     DI_out <- rep(NA, nrow(newdata))
     LPD_out <- rep(NA, nrow(newdata))
     if (indices) {
-      Indices_out <- matrix(NA, nrow = nrow(newdata), ncol = maxLPD)
+        Indices_out <- matrix(NA, nrow = nrow(newdataCC), ncol = maxLPD)
     }
-    for (i in seq(nrow(newdataCC))) {
-      knnDist  <- .knndistfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, maxLPD = maxLPD, algorithm=algorithm)
-      knnDI <- knnDist / trainDI$trainDist_avrgmean
-      knnDI <- c(knnDI)
 
-      DI_out[okrows[i]] <- knnDI[1]
-      LPD_out[okrows[i]] <- sum(knnDI < trainDI$threshold)
-      knnIndex  <- .knnindexfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, maxLPD = LPD_out[okrows[i]],algorithm=algorithm)
+    if (!parallel) {
 
-      if (indices) {
-        if (LPD_out[okrows[i]] > 0) {
-          Indices_out[okrows[i],1:LPD_out[okrows[i]]] <- knnIndex
+      if (verbose) {
+        pb <- txtProgressBar(min = 0,
+                             max = nrow(newdataCC),
+                             style = 3)
+      }
+
+      for (i in seq(nrow(newdataCC))) {
+        knnDist  <- .knndistfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, maxLPD = maxLPD, algorithm=algorithm)
+        knnDI <- knnDist / trainDI$trainDist_avrgmean
+        knnDI <- c(knnDI)
+
+        DI_out[okrows[i]] <- knnDI[1]
+        LPD_out[okrows[i]] <- sum(knnDI < trainDI$threshold)
+
+        if (indices) {
+          if (LPD_out[okrows[i]] > 0) {
+            knnIndex  <- .knnindexfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, maxLPD = LPD_out[okrows[i]],algorithm=algorithm)
+            Indices_out[i,1:LPD_out[okrows[i]]] <- as.numeric(knnIndex)
+          }
+        }
+
+        if (verbose) {
+          setTxtProgressBar(pb, i)
         }
       }
 
+      # end progress bar
       if (verbose) {
-        setTxtProgressBar(pb, i)
+        close(pb)
       }
     }
 
-    if (verbose) {
-      close(pb)
+    # parallelized computatio using parLapply
+    if (parallel) {
+      message("Progress cannot be visualized for parallel computation.")
+
+      trainDIdat <- trainDI # store trainDI in different variable to avoid environment conflict with function trainDI()
+
+      if (cores == "auto") {
+        cores <- floor(detectCores()/2)
+      }
+
+
+
+      # Create a cluster
+      cl <- makeForkCluster(cores, useXDR = FALSE, methods = FALSE)
+
+      # Export the necessary data and functions to the cluster
+      clusterExport(cl, c("train_scaled",
+                          "method",
+                          "S_inv",
+                          "trainDIdat",
+                          "indices",
+                          "maxLPD",
+                          "algorithm",
+                          ".process_row",
+                          ".knndistfun",
+                          ".knnindexfun"), envir = environment())
+
+      # # Split newdataCC into chunks for each core (important for large datasets)
+      size_chunks <- ceiling(nrow(newdataCC) / cores)
+      indices_chunks <- split(seq(nrow(newdataCC)), rep(1:cores, each = size_chunks, length.out = nrow(newdataCC)))
+      chunks <- lapply(indices_chunks, function(indices) newdataCC[indices, ] )
+
+      # Apply parLapply over chunks
+      results_chunks <- parLapply(cl, chunks, function(chunk) {
+        apply(chunk, MARGIN = 1, .process_row)
+      })
+
+      # Combine the results from the computation of the data chunks
+      results <- unlist(results_chunks, recursive = FALSE)
+
+      # Stop the cluster
+      stopCluster(cl)
+
+      # Process the results and put them in the original output variables
+      for (i in seq(length(results))) {
+        DI_out[okrows[i]] <- results[[i]]$DI_out_i
+        LPD_out[okrows[i]] <- results[[i]]$LPD_out_i
+        if (indices & results[[i]]$LPD_out_i > 0) {
+          Indices_out[i,1:LPD_out[okrows[i]]] <- as.numeric(results[[i]]$Indices_out_i)
+        }
+      }
     }
 
     # set maxLPD to max of LPD_out if
@@ -374,6 +452,7 @@ aoa <- function(newdata,
 
     if (indices) {
       Indices_out <- Indices_out[,1:trainDI$maxLPD]
+      rownames(Indices_out) <- okrows
     }
   }
 
@@ -451,7 +530,8 @@ aoa <- function(newdata,
             reference,
             method,
             S_inv = NULL,
-            maxLPD = maxLPD, algorithm) {
+            maxLPD = maxLPD,
+            algorithm) {
     if (method == "L2") {
       # Euclidean Distance
       return(FNN::knnx.dist(reference, point, k = maxLPD, algorithm = algorithm))
@@ -469,7 +549,8 @@ aoa <- function(newdata,
             reference,
             method,
             S_inv = NULL,
-            maxLPD = maxLPD, algorithm) {
+            maxLPD = maxLPD,
+            algorithm) {
     if (method == "L2") {
       # Euclidean Distance
       return(FNN::knnx.index(reference, point, k = maxLPD, algorithm = algorithm))
@@ -477,4 +558,43 @@ aoa <- function(newdata,
       stop("MD currently not implemented for LPD")
     }
   }
+
+.process_row <- function(row) {
+  knnDist <- .knndistfun(t(matrix(row)), train_scaled, method, S_inv, maxLPD = maxLPD, algorithm=algorithm)
+  knnDI <- knnDist / trainDIdat$trainDist_avrgmean
+  knnDI <- c(knnDI)
+
+  DI_out_i <- knnDI[1]
+  LPD_out_i <- sum(knnDI < trainDIdat$threshold)
+
+  if (indices) {
+    knnIndex <- .knnindexfun(t(matrix(row)), train_scaled, method, S_inv, maxLPD = LPD_out_i, algorithm=algorithm)
+    Indices_out_i <- if (LPD_out_i > 0) { knnIndex } else { NA }
+
+    # return here if indices to be calculated
+    return(list(DI_out_i = DI_out_i,
+                LPD_out_i = LPD_out_i,
+                Indices_out_i = Indices_out_i
+    ))
+  }
+
+  # return if indices not to be calculated
+  return(list(DI_out_i = DI_out_i,
+              LPD_out_i = LPD_out_i
+  ))
+}
+
+# Tell R CMD check these variables are fine
+utils::globalVariables(
+  c(
+    "train_scaled",
+    "method",
+    "S_inv",
+    "trainDIdat",
+    "maxLPD",
+    "algorithm",
+    "indices"
+    )
+  )
+
 

@@ -19,6 +19,8 @@ aoa(
   LPD = FALSE,
   maxLPD = 1,
   indices = FALSE,
+  parallel = FALSE,
+  cores = 4,
   verbose = TRUE,
   algorithm = "brute"
 )
@@ -58,6 +60,10 @@ Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.}
 \item{maxLPD}{numeric or integer. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples. CAUTION! If not all training samples are considered, a fitted relationship between LPD and error metric will not make sense (@seealso \code{\link{DItoErrormetric}})}
 
 \item{indices}{logical. Calculate indices of the training data points that are responsible for the LPD of a new prediction location? Output is a matrix with the dimensions num(raster_cells) x maxLPD. Each row holds the indices of the training data points that are relevant for the specific LPD value at that location. Can be used in combination with exploreAOA(aoa) function from the \href{https://github.com/fab-scm/CASTvis}{CASTvis package} for a better visual interpretation of the results. Note that the matrix can be quite big for examples with a high resolution and a larger number of training samples, which can cause memory issues.}
+
+\item{parallel}{Logical. Parallelization the process. Only possible if LPD = TRUE. Can reduce computation time significantly.}
+
+\item{cores}{Integer or Character. Number of cores to use for the the parallelization. You can use "auto" to set your cores to \code{detectCores()/2} (see \code{\link[parallel]{detectCores}}).}
 
 \item{verbose}{Logical. Print progress or not?}
 
@@ -135,15 +141,23 @@ AOA <- aoa(studyArea, model)
 plot(AOA)
 plot(AOA$AOA)
 #... or if preferred calculate the aoa and the LPD of the study area:
-AOA <- aoa(studyArea, model, LPD = TRUE, maxLPD = 1)
+AOA <- aoa(studyArea, model, LPD = TRUE)
+plot(AOA$LPD)
+
+#note that it is not required to use Random Forests. The method is model agnostic.
+# Let's chnage to SVM:
+model <- train(trainDat[,which(names(trainDat)\%in\%variables)],
+trainDat$VW, method="svmRadial", importance=TRUE, tuneLength=1,
+trControl=trainControl(method="cv",number=5,savePredictions=T))
+AOA <- aoa(studyArea, model, LPD = TRUE)
 plot(AOA$LPD)
 
 ####
 #The AOA can also be calculated without a trained model.
 #All variables are weighted equally in this case:
 ####
-AOA <- aoa(studyArea,train=trainDat,variables=variables)
 
+AOA <- aoa(studyArea,train=trainDat,variables=variables)
 
 ####
 # The AOA can also be used for models trained via mlr3 (parameters have to be assigned manually):
@@ -182,9 +196,9 @@ Meyer, H., Pebesma, E. (2021): Predicting into unknown space?
 Estimating the area of applicability of spatial prediction models.
 Methods in Ecology and Evolution 12: 1620-1633. \doi{10.1111/2041-210X.13650}
 
-Schumacher, F., Knoth, C., Ludwig, M., Meyer, H. (2024):
+Schumacher, F., Knoth, C., Ludwig, M., Meyer, H. (2025):
 Estimation of local training data point densities to support the assessment
-of spatial prediction uncertainty. EGUsphere. \doi{10.5194/egusphere-2024-2730}.
+of spatial prediction uncertainty. Geosci. Model Dev., 18, 10185–10202. \doi{10.5194/gmd-18-10185-2025}
 }
 \seealso{
 \code{\link{trainDI}}, \code{\link{normalize_DI}}, \code{\link{errorProfiles}}

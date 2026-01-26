@@ -103,8 +103,9 @@ plot(AOA)
 plot(truediff,col=viridis(100),main="true prediction error")
 plot(AOA$DI,col=viridis(100),main="DI")
 plot(AOA$LPD,col=viridis(100),main="LPD")
-plot(prediction, col=viridis(100),main="prediction for AOA")
-plot(AOA$AOA,col=c("grey","transparent"),add=T,plg=list(x="topleft",box.col="black",bty="o",title="AOA"))
+#mask prediction with AOA:
+plot(mask(prediction,AOA$AOA,maskvalue=0),
+     col=viridis(100),main="Prediction for AOA")
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 set.seed(25)
@@ -152,10 +153,11 @@ AOA_random <- aoa(predictors, model_random, LPD = FALSE, verbose = FALSE)
 ## ----message = FALSE, warning=FALSE,  fig.show="hold", out.width="50%"--------
 plot(AOA_spatial$DI,col=viridis(100),main="DI")
 plot(AOA_spatial$LPD,col=viridis(100),main="LPD")
-plot(prediction, col=viridis(100),main="prediction for AOA \n(spatial CV error applies)")
-plot(AOA_spatial$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",bg = 'white',title="AOA"))
-plot(prediction_random, col=viridis(100),main="prediction for AOA \n(random CV error applies)")
-plot(AOA_random$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",bg = 'white',title="AOA"))
+#mask prediction with AOA:
+plot(mask(prediction,AOA_spatial$AOA,maskvalue=0), col=viridis(100),main="prediction for AOA (spatial CV error applies)",
+     cex.main=0.75)
+plot(mask(prediction_random,AOA_random$AOA,maskvalue=0), col=viridis(100),main="prediction for AOA (random CV error applies)", cex.main=0.75)
+
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 grid.arrange(plot(AOA_spatial, variable = "DI") + ggplot2::ggtitle("Spatial CV"),
@@ -194,13 +196,11 @@ DI_updated_AOA = AOA_spatial$DI > attr(DI_RMSE_relation, "AOA_threshold")
 # account for multiCV changing the DI threshold
 LPD_updated_AOA = AOA_spatial$DI > attr(LPD_RMSE_relation, "AOA_threshold")
 
+#mask prediction with AOA:
+plot(mask(DI_expected_RMSE,DI_updated_AOA,maskvalue=0),col=viridis(100),main="DI expected RMSE")
 
+plot(mask(LPD_expected_RMSE,LPD_updated_AOA,maskvalue=0),col=viridis(100),main="LPD expected RMSE")
 
-plot(DI_expected_RMSE,col=viridis(100),main="DI expected RMSE")
-plot(DI_updated_AOA, col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",bg = 'white',title="AOA"))
-
-plot(LPD_expected_RMSE,col=viridis(100),main="LPD expected RMSE")
-plot(LPD_updated_AOA, col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o",bg = 'white',title="AOA"))
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 data(cookfarm)
@@ -244,7 +244,7 @@ plot(pts,zcol="ID",col="red",add=TRUE)
 plot(AOA$LPD,col=viridis(100),main="LPD with sampling locations (red)")
 plot(pts,zcol="ID",col="red",add=TRUE)
 
-plot(prediction, col=viridis(100),main="prediction for AOA \n(LOOCV error applies)")
-plot(AOA$AOA,col=c("grey","transparent"),add=TRUE,plg=list(x="topleft",box.col="black",bty="o", bg = 'white', title="AOA"))
+#show only predictions inside the AOA (mask):
+plot(mask(prediction,AOA$AOA,maskvalue=0), col=viridis(100), main="prediction for AOA (LOOCV error applies)", cex.main=0.75)
 
 
