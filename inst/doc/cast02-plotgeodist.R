@@ -47,9 +47,9 @@ ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
 dist_random <- geodist(pts_random,co.ee,
-                            sampling="Fibonacci")
+                            sampling="regular")
 dist_clstr <- geodist(pts_clustered,co.ee,
-                           sampling="Fibonacci")
+                           sampling="regular")
 
 plot(dist_random, unit = "km")+scale_x_log10(labels=round)+ggtitle("Randomly distributed reference data")
 plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)+ggtitle("Clustered reference data")
@@ -70,8 +70,8 @@ ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
 dist_clstr <- geodist(pts_clustered,co.ee,
-                           sampling="Fibonacci", 
-                           cvfolds= randomfolds)
+                           sampling="regular", 
+                           CVtest= randomfolds)
 plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)
 
 
@@ -86,8 +86,8 @@ ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
 dist_clstr <- geodist(pts_clustered,co.ee,
-                           sampling="Fibonacci",
-                           cvfolds= spatialfolds$indexOut)
+                           sampling="regular",
+                           CVtest= spatialfolds$indexOut)
 plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)
 
              
@@ -111,8 +111,8 @@ ggplot() + geom_sf(data = co.ee, fill="#00BFC4",col="#00BFC4") +
 spfolds_rand <- CreateSpacetimeFolds(pts_random_co,spacevar = "subregion",
                                      k=length(unique(pts_random_co$subregion)))
 dist_rand_sp <- geodist(pts_random_co,co.ee,
-                             sampling="Fibonacci", 
-                             cvfolds= spfolds_rand$indexOut)
+                             sampling="regular", 
+                             CVtest= spfolds_rand$indexOut)
 plot(dist_rand_sp, unit = "km")+scale_x_log10(labels=round)
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
@@ -120,9 +120,8 @@ plot(dist_rand_sp, unit = "km")+scale_x_log10(labels=round)
 
 nndmfolds_clstr <- knndm(pts_clustered, modeldomain=co.ee, samplesize = 2000)
 dist_clstr <- geodist(pts_clustered,co.ee,
-                           sampling = "Fibonacci",
-                           cvfolds = nndmfolds_clstr$indx_test, 
-                           cvtrain = nndmfolds_clstr$indx_train)
+                           sampling = "regular",
+                           CVtest = nndmfolds_clstr$indx_test)
 plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)
 
 
@@ -130,30 +129,41 @@ plot(dist_clstr, unit = "km")+scale_x_log10(labels=round)
 
 nndmfolds_rand <- knndm(pts_random_co,  modeldomain=co.ee, samplesize = 2000)
 dist_rand <- geodist(pts_random_co,co.ee,
-                          sampling = "Fibonacci",
-                          cvfolds = nndmfolds_rand$indx_test, 
-                          cvtrain = nndmfolds_rand$indx_train)
+                          sampling = "regular",
+                          CVtest = nndmfolds_rand$indx_test,
+                          CVtrain = nndmfolds_rand$indx_train
+                          )
 plot(dist_rand, unit = "km")+scale_x_log10(labels=round)
 
 
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
 predictors_global <- worldclim_global(var="bio",res = 10,path=tempdir())
+
+## ----echo=FALSE---------------------------------------------------------------
+wc_exist = ifelse(exists("predictors_global"), TRUE, FALSE)
+
+## ----message = FALSE, warning=FALSE, results='hide', eval = wc_exist----------
 names(predictors_global) <- c(paste0("bio_",1:19)) 
 predictors_global <- predictors_global[[c("bio_2", "bio_10", "bio_13", "bio_19")]]
 plot(predictors_global)
 
-## ----message = FALSE, warning=FALSE, results='hide'---------------------------
+## ----message = FALSE, warning=FALSE, results='hide', eval = wc_exist----------
+
+# project the training points to the raster CRS
+pts_clustered <- st_transform(pts_clustered, st_crs(predictors_global))
 
 # use random CV:
-dist_clstr_rCV <- geodist(pts_clustered,predictors_global,
-                               type = "feature", 
+dist_clstr_rCV <- geodist(pts_clustered,
+                          modeldomain = predictors_global,
+                               dist_space = "feature", 
                                sampling="Fibonacci",
-                               cvfolds = randomfolds)
+                               CVtest = randomfolds)
 
 # use spatial CV:
-dist_clstr_sCV <- geodist(pts_clustered,predictors_global,
-                               type = "feature", sampling="Fibonacci",
-                               cvfolds = spatialfolds$indexOut)
+dist_clstr_sCV <- geodist(pts_clustered,
+                          modeldomain = predictors_global,
+                               dist_space = "feature", sampling="Fibonacci",
+                               CVtest = spatialfolds$indexOut)
 
 
 # Plot results:

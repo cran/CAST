@@ -2,11 +2,24 @@
 % Please edit documentation in R/aoa.R
 \name{aoa}
 \alias{aoa}
+\alias{aoa.stars}
+\alias{aoa.Raster}
+\alias{aoa.SpatRaster}
+\alias{aoa.data.frame}
 \title{Area of Applicability}
 \usage{
-aoa(
+aoa(newdata, model = NA, ...)
+
+\method{aoa}{stars}(newdata, model = NA, ...)
+
+\method{aoa}{Raster}(newdata, model = NA, ...)
+
+\method{aoa}{SpatRaster}(newdata, model = NA, ...)
+
+\method{aoa}{data.frame}(
   newdata,
   model = NA,
+  ...,
   trainDI = NA,
   train = NULL,
   weight = NA,
@@ -32,6 +45,8 @@ the model was meant to make predictions for.}
 \item{model}{A train object created with caret used to extract weights from (based on variable importance) as well as cross-validation folds.
 See examples for the case that no model is available or for models trained via e.g. mlr3.}
 
+\item{...}{ignored}
+
 \item{trainDI}{A trainDI object. Optional if \code{\link{trainDI}} was calculated beforehand.}
 
 \item{train}{A data.frame containing the data used for model training. Optional. Only required when no model is given}
@@ -41,7 +56,7 @@ See examples for the case that no model is available or for models trained via e
 \item{variables}{character vector of predictor variables. if "all" then all variables
 of the model are used or if no model is given then of the train dataset.}
 
-\item{CVtest}{list or vector. Either a list where each element contains the data points used for testing during the cross validation iteration (i.e. held back data).
+\item{CVtest}{list or vector. Either a list with the length of the number of cross-validation folds where each element contains the row indices of the data points used for testing during the cross validation iteration (i.e. held back data).
 Or a vector that contains the ID of the fold for each training point.
 Only required if no model is given.}
 
@@ -107,7 +122,6 @@ Will be fixed.
 library(sf)
 library(terra)
 library(caret)
-library(viridis)
 
 # prepare sample data:
 data(cookfarm)

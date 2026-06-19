@@ -8,25 +8,31 @@ knndm(
   tpoints,
   modeldomain = NULL,
   predpoints = NULL,
-  space = "geographical",
+  dist_space = "geographical",
   k = 10,
   maxp = 0.5,
   clustering = "hierarchical",
   linkf = "ward.D2",
   samplesize = 1000,
   sampling = "regular",
-  useMD = FALSE,
-  algorithm = "brute"
+  dist_fun = "euclidean",
+  algorithm = "brute",
+  scale_vars = TRUE,
+  space = NULL,
+  useMD = NULL,
+  test_prop = NULL,
+  test_tolerance = NULL,
+  nk_len = 100
 )
 }
 \arguments{
-\item{tpoints}{sf or sfc point object, or data.frame if space = "feature". Contains the training points samples.}
+\item{tpoints}{sf or sfc point object, or data.frame if dist_space = "feature". Contains the training points samples.}
 
 \item{modeldomain}{sf polygon object or SpatRaster defining the prediction area. Optional; alternative to predpoints (see Details).}
 
-\item{predpoints}{sf or sfc point object, or data.frame if space = "feature". Contains the target prediction points. Optional; alternative to modeldomain (see Details).}
+\item{predpoints}{sf or sfc point object, or data.frame if dist_space = "feature". Contains the target prediction points. Optional; alternative to modeldomain (see Details).}
 
-\item{space}{character. Either "geographical" or "feature".}
+\item{dist_space}{character. Either "geographical" or "feature".}
 
 \item{k}{integer. Number of folds desired for CV. Defaults to 10.}
 
@@ -43,10 +49,30 @@ Only required if modeldomain is used instead of predpoints.}
 \item{sampling}{character. How to draw prediction points from the modeldomain? See `sf::st_sample`.
 Only required if modeldomain is used instead of predpoints.}
 
-\item{useMD}{boolean. Only for `space`=feature: shall the Mahalanobis distance be calculated instead of Euclidean?
-Only works with numerical variables.}
+\item{dist_fun}{character. Currently covers `euclidean` (default), `gower`, `mahalanobis` and `great_circle`.
+`gower` and `mahalanobis` only work with `dist_space`="feature", while `great_circle` only works with `dist_space`="geographical".
+`mahalanobis` takes into account correlation between predictor values. While `euclidean` and `mahalanobis` only work with numerical variables,
+`gower` also works with mixed data including numerical and categorical variables.
+For the geographical space, `great_circle` covers lon/lat coordinates, whereas `euclidean` only works with projected coordinates.}
 
 \item{algorithm}{see \code{\link[FNN]{knnx.dist}} and \code{\link[FNN]{knnx.index}}}
+
+\item{scale_vars}{boolean. Should variables be scaled? Only for `dist_space`="feature".
+Calculating Gower distances already includes scaling, and manually rescale the data is redundant.
+For other distances (Mahalanobis, Euclidean), scaling the data is important. Thus, TRUE by default.}
+
+\item{space}{deprecated. Use `dist_space` instead.}
+
+\item{useMD}{deprecated. Use `dist_fun` instead.}
+
+\item{test_prop}{numeric. The proportion of test data. NULL by default (i.e., no train/test split).}
+
+\item{test_tolerance}{numeric. The allowed deviance from `test_prop`. The higher the tolerance,
+the larger the possibility to obtain train/test splits that yield good approximations of the prediction situation.}
+
+\item{nk_len}{integer. The number of fold configurations to test. By default 100.
+Larger numbers increase computational times, but also might lead to better W statistics.
+Useful for train/test splits, where a large number of configurations is discarded.}
 }
 \value{
 An object of class \emph{knndm} consisting of a list of eight elements:
@@ -55,20 +81,28 @@ training/test data in each kNNDM CV iteration), Gij (distances for
 G function construction between prediction and target points), Gj
 (distances for G function construction during LOO CV), Gjstar (distances
 for modified G function during kNNDM CV), clusters (list of cluster IDs),
-W (Wasserstein statistic), and space (stated by the user in the function call).
+W (Wasserstein statistic), and dist_space (stated by the user in the function call).
 }
 \description{
-This function implements the kNNDM algorithm and returns the necessary
-indices to perform a k-fold NNDM CV for map validation.
+This function implements the kNNDM algorithm for prediction-domain adaptive resampling
+and returns the necessary indices to perform train-test splits or k-fold NNDM CV.
 }
 \details{
-knndm is a k-fold version of NNDM LOO CV for medium and large datasets. Brielfy, the algorithm tries to
-find a k-fold configuration such that the integral of the absolute differences (Wasserstein W statistic)
-between the empirical nearest neighbour distance distribution function between the test and training data during CV (Gj*),
+knndm is an implementation of prediction-domain adaptive validation.
+It is a k-fold version of NNDM LOO CV which makes it more suitable for medium and large datasets.
+It can be used for cross-validation and train / test splits (the latter is experimental).
+Briefly, the algorithm tries to find a configuration such that the integral of the absolute differences (Wasserstein W statistic)
+between the empirical nearest neighbour distance distribution function between the test and training data (Gj*),
 and the empirical nearest neighbour distance distribution function between the prediction and training points (Gij),
 is minimised. It does so by performing clustering of the training points' coordinates for different numbers of
 clusters that range from k to N (number of observations), merging them into k final folds,
 and selecting the configuration with the lowest W.
+
+When using `knndm` to split the data into training and test sets (experimental), the proportion of points belonging to the test set (`test_prop`) replaces the number of folds `k`.
+Based on the `test_prop` , `minp` and `maxp` are calculated as the `test_prop` +/- `test_tolerance`.
+Compared to k-fold CV, using knndm for train/test splits is less flexible and often results in larger NNDs between test and train locations
+than between prediction and train locations. Hence, it is essential to plot the results of `knndm` and check how well the split can resemble the prediction situation.
+Modifying the `test_prop` parameter, as well as increasing `test_prop` allow more flexible matching and can potentially improve the match.
 
 Using a projected CRS in `knndm` has large computational advantages since fast nearest neighbour search can be
 done via the `FNN` package, while working with geographic coordinates requires computing the full
@@ -95,8 +129,8 @@ Then, the function takes a regular point sample (amount defined by `samplesize`)
 As an alternative use `predpoints` instead of `modeldomain`, if you have already defined the prediction locations (e.g. raster pixel centroids).
 When using either `modeldomain` or `predpoints`, we advise to plot the study area polygon and the training/prediction points as a previous step to ensure they are aligned.
 
-`knndm` can also be performed in the feature space by setting `space` to "feature".
-Euclidean distances or Mahalanobis distances can be used for distance calculation, but only Euclidean are tested.
+`knndm` can also be performed in the feature space by setting `dist_space` to "feature".
+Euclidean distances, Gower distance or Mahalanobis distances can be used for distance calculation, but only Euclidean are tested.
 In this case, nearest neighbour distances are calculated in n-dimensional feature space rather than in geographical space.
 `tpoints` and `predpoints` can be data frames or sf objects containing the values of the features. Note that the names of `tpoints` and `predpoints` must be the same.
 `predpoints` can also be missing, if `modeldomain` is of class SpatRaster. In this case, the values of of the SpatRaster will be extracted to the `predpoints`.
@@ -203,7 +237,41 @@ model_knndm <- train(dat[,c("DEM","TWI", "NDRE.M")],
 global_validation(model_knndm)
 }
 ########################################################################
-# Example 4: Real- world example; kNNDM in feature space
+# Example 4: Simulated data - Train/test split with clustered training points
+########################################################################
+\dontrun{
+library(sf)
+library(ggplot2)
+
+# Simulate 1000 clustered training points in a 100x100 square
+set.seed(1234)
+simarea <- list(matrix(c(0,0,0,100,100,100,100,0,0,0), ncol=2, byrow=TRUE))
+simarea <- sf::st_polygon(simarea)
+train_points <- clustered_sample(simarea, 1000, 50, 5)
+pred_points <- sf::st_sample(simarea, 1000, type = "regular")
+plot(simarea)
+plot(pred_points, add = TRUE, col = "blue")
+plot(train_points, add = TRUE, col = "red")
+
+# Use kNNDM to split the data into 30\% +- 10\% test and 70\% train
+knndm_folds <- knndm(train_points, predpoints = pred_points, test_prop = 0.3, test_tolerance = 0.1)
+# How many samples have been used for testing:
+table(knndm_folds$clusters)
+plot(knndm_folds)
+# The train/test split could not represent the prediction situation well
+# Increase tolerance to increase number of configurations tried, and thus to find a suitable split
+knndm_folds <- knndm(train_points, predpoints = pred_points, test_prop = 0.3, test_tolerance = 0.2)
+plot(knndm_folds)
+table(knndm_folds$clusters)
+# This resulted in better match of the prediction situation, but a 50/50 split
+folds <- as.character(knndm_folds$clusters)
+ggplot() +
+  geom_sf(data = simarea, alpha = 0) +
+  geom_sf(data = train_points, aes(col = folds))
+}
+
+########################################################################
+# Example 5: Real- world example; kNNDM in feature space
 ########################################################################
 \dontrun{
 library(sf)
@@ -224,7 +292,7 @@ predictors_sp <- terra::rast(system.file("extdata", "predictors_chile.tif",packa
 terra::plot(predictors_sp[["bio_1"]])
 terra::plot(vect(splotdata), add = T)
 
-knndm_folds <- knndm(trainDat[,predictors], modeldomain = predictors_sp, space = "feature",
+knndm_folds <- knndm(trainDat[,predictors], modeldomain = predictors_sp, dist_space = "feature",
                     clustering="kmeans", k=4, maxp=0.8)
 plot(knndm_folds)
 

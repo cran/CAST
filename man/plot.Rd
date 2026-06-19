@@ -22,7 +22,7 @@
 \method{plot}{ffs}(
   x,
   plotType = "all",
-  palette = rainbow,
+  palette = grDevices::hcl.colors,
   reverse = FALSE,
   marker = "black",
   size = 1.5,
@@ -51,7 +51,7 @@ Alternatively, set to "simple" to have more intuitive labels.}
 
 \item{plotType}{character. Either "all" or "selected"}
 
-\item{palette}{A color palette}
+\item{palette}{A color palette function}
 
 \item{reverse}{Character. Should the palette be reversed?}
 
@@ -91,7 +91,7 @@ Plot the DI/LPD and errormetric from Cross-Validation with the modeled relations
 \examples{
 \dontrun{
 data(splotdata)
-splotdata <- st_drop_geometry(splotdata)
+splotdata <- sf::st_drop_geometry(splotdata)
 ffsmodel <- ffs(splotdata[,6:16], splotdata$Species_richness, ntree = 10)
 plot(ffsmodel)
 #plot performance of selected variables only:

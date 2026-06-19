@@ -8,7 +8,7 @@ test_that("kNNDM works with geographical coordinates and prediction points", {
     sf::st_set_crs("epsg:4326")
 
   set.seed(1)
-  kout <- knndm(tpoints, predpoints=predpoints, k=2, maxp=0.8)
+  kout <- knndm(tpoints, predpoints=predpoints, k=2, maxp=0.8, dist_space = "geographical", dist_fun = "great_circle")
   expect_identical(round(kout$W,1), 121095.2)
   expect_identical(kout$method, "hierarchical")
   expect_identical(kout$q, 3L)
@@ -74,13 +74,15 @@ test_that("kNNDM works with modeldomain and geographical coordinates", {
     sf::st_cast("POINT")
 
   set.seed(1)
-  kout <- suppressMessages(knndm(tpoints, modeldomain = aoi, k=2, maxp=0.8, clustering = "hierarchical"))
+  kout <- suppressMessages(knndm(tpoints, modeldomain = aoi, k=2, maxp=0.8, clustering = "hierarchical", 
+                                  dist_space = "geographical", dist_fun = "great_circle"))
 
   expect_identical(round(kout$W,4), 133187.4275)
   expect_identical(kout$method, "hierarchical")
   expect_identical(kout$q, 3L)
 
-  expect_message(knndm(tpoints, modeldomain = aoi, k=2, maxp=0.8, clustering = "hierarchical"),
+  expect_message(knndm(tpoints, modeldomain = aoi, k=2, maxp=0.8, clustering = "hierarchical", 
+                        dist_space = "geographical", dist_fun = "great_circle"),
                  "1000 prediction points are sampled from the modeldomain")
 
 })
@@ -120,7 +122,8 @@ test_that("kNNDM works when no clustering is present", {
   set.seed(1)
   kout <- suppressMessages(knndm(sf::st_transform(tpoints,"epsg:4326"),
                                  predpoints = sf::st_transform(predpoints, "epsg:4326"),
-                                 k=2, maxp=0.8, clustering = "hierarchical"))
+                                 k=2, maxp=0.8, clustering = "hierarchical", 
+                                 dist_space = "geographical", dist_fun = "great_circle"))
   expect_equal(kout$q, "random CV")
 })
 
@@ -215,7 +218,7 @@ test_that("kNNDM works in feature space with kmeans clustering and raster as mod
   studyArea <- studyArea[[names(studyArea) %in% names(pts)]]
   train_points <- pts[,names(pts) %in% names(studyArea)]
 
-  knndm_folds <- knndm(train_points, modeldomain = studyArea, space="feature", clustering = "kmeans")
+  knndm_folds <- knndm(train_points, modeldomain = studyArea, dist_space="feature", clustering = "kmeans")
 
   expect_equal(round(as.numeric(knndm_folds$Gjstar[40]),4), 0.2132)
 
@@ -238,7 +241,7 @@ test_that("kNNDM works in feature space with hierarchical clustering and raster 
   studyArea <- studyArea[[names(studyArea) %in% names(pts)]]
   tpoints <- pts[,names(pts) %in% names(studyArea)]
 
-  knndm_folds <- knndm(tpoints, modeldomain = studyArea, space="feature", clustering = "hierarchical")
+  knndm_folds <- knndm(tpoints, modeldomain = studyArea, dist_space="feature", clustering = "hierarchical")
 
   expect_equal(round(as.numeric(knndm_folds$Gjstar[40]),4), 0.2132)
 
@@ -258,7 +261,7 @@ test_that("kNNDM works in feature space with clustered training points", {
   trainDat <- sf::st_drop_geometry(splotdata)
   predictors_sp <- terra::rast(system.file("extdata", "predictors_chile.tif",package="CAST"))
 
-  knndm_folds <- knndm(trainDat[,predictors], modeldomain = predictors_sp, space = "feature",
+  knndm_folds <- knndm(trainDat[,predictors], modeldomain = predictors_sp, dist_space = "feature",
                        clustering="kmeans", k=4, maxp=0.8)
 
 
@@ -290,7 +293,7 @@ test_that("kNNDM works in feature space with categorical variables and predpoint
 
 
   knndm_folds <- knndm(tpoints=train_points, predpoints = prediction_points,
-                       space="feature", clustering = "hierarchical")
+                       dist_space="feature", clustering = "hierarchical", dist_fun = "gower")
 
   expect_equal(round(as.numeric(knndm_folds$Gjstar[40]),3), 0.057)
 
@@ -316,8 +319,8 @@ test_that("kNNDM works in feature space with clustered training points, categori
   pts <- sf::st_transform(pts, crs = sf::st_crs(studyArea))
   pts <- terra::extract(predictor_stack, terra::vect(pts), ID=FALSE)
 
-  knndm_folds_kproto <- knndm(tpoints=pts, modeldomain = predictor_stack, space="feature", clustering = "kmeans")
-  knndm_folds_hclust <- knndm(tpoints=pts, modeldomain = predictor_stack, space="feature", clustering = "hierarchical")
+  knndm_folds_kproto <- knndm(tpoints=pts, modeldomain = predictor_stack, dist_space="feature", clustering = "kmeans", dist_fun = "gower")
+  knndm_folds_hclust <- knndm(tpoints=pts, modeldomain = predictor_stack, dist_space="feature", clustering = "hierarchical", dist_fun = "gower")
 
   expect_equal(round(as.numeric(knndm_folds_kproto$Gjstar[20]),3), 0.077)
   expect_equal(round(as.numeric(knndm_folds_hclust$Gjstar[20]),3), 0.078)
@@ -336,8 +339,8 @@ test_that("kNNDM works in feature space with Mahalanobis distance", {
   predictors_sp <- terra::rast(system.file("extdata", "predictors_chile.tif",package="CAST"))
 
   set.seed(1234)
-  knndm_folds <- knndm(trainDat[,predictors], modeldomain = predictors_sp, space = "feature",
-                       clustering="kmeans", k=4, maxp=0.8, useMD=TRUE)
+  knndm_folds <- knndm(trainDat[,predictors], modeldomain = predictors_sp, dist_space = "feature",
+                       clustering="kmeans", k=4, maxp=0.8, dist_fun = "mahalanobis")
 
   expect_equal(round(as.numeric(knndm_folds$Gjstar[40]),4), 1.1258)
 
@@ -360,10 +363,62 @@ test_that("kNNDM works in feature space with Mahalanobis distance without cluste
   studyArea <- studyArea[[names(studyArea) %in% names(pts)]]
   train_points <- pts[,names(pts) %in% names(studyArea)]
 
-  expect_message(knndm(train_points, modeldomain = studyArea, space="feature", clustering = "kmeans", useMD = TRUE),
+  expect_message(knndm(train_points, modeldomain = studyArea, dist_space="feature", clustering = "kmeans", dist_fun = "mahalanobis"),
                  "Gij <= Gj; a random CV assignment is returned")
 
-  expect_message(knndm(train_points, modeldomain = studyArea, space="feature", clustering = "hierarchical", useMD = TRUE),
+  expect_message(knndm(train_points, modeldomain = studyArea, dist_space="feature", clustering = "hierarchical", dist_fun = "mahalanobis"),
                  "Gij <= Gj; a random CV assignment is returned")
 
+})
+
+
+test_that("kNNDM works with train/test splits in geographical space", {
+  sf::sf_use_s2(TRUE)
+  aoi <- sf::st_as_sfc("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))", crs="epsg:25832")
+  sample_area <- sf::st_as_sfc("POLYGON ((0 0, 4 0, 4 4, 0 4, 0 0))", crs="epsg:25832")
+
+  set.seed(1)
+  tpoints <- sf::st_sample(sample_area, 100)
+  predpoints <- sf::st_sample(aoi, 1000)
+
+  kout <- suppressWarnings(knndm(tpoints, predpoints = predpoints, test_prop = 0.3, test_tolerance = 0.1, dist_space = "geographical"))
+  expect_identical(round(kout$W,1), 2.4)
+  expect_identical(kout$method, "hierarchical")
+  expect_identical(kout$q, 4L)
+
+})
+
+test_that("kNNDM works with train/test splits in feature space", {
+  skip_if_not_installed("PCAmixdata")
+  set.seed(1234)
+
+  data(splotdata)
+  splotdata <- splotdata[splotdata$Country == "Chile",]
+
+  predictors <- c("bio_1", "bio_4", "bio_5", "bio_6",
+                  "bio_8", "bio_9", "bio_12", "bio_13",
+                  "bio_14", "bio_15", "elev")
+  trainDat <- sf::st_drop_geometry(splotdata)
+  predictors_sp <- terra::rast(system.file("extdata", "predictors_chile.tif",package="CAST"))
+
+  knndm_folds <- suppressWarnings(knndm(trainDat[,predictors], modeldomain = predictors_sp, dist_space = "feature",
+                       clustering="kmeans", test_prop = 0.4, test_tolerance = 0.1))
+
+
+  expect_equal(round(as.numeric(knndm_folds$Gjstar[40]),4), 0.8287)
+  expect_equal(round(as.numeric(knndm_folds$W),1), 1.8)
+})
+
+test_that("print and plot for knndm run and return invisibly", {
+  aoi <- sf::st_as_sfc("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))", crs="epsg:25832")
+  tpoints <- sf::st_as_sfc("MULTIPOINT ((1 1), (1 2), (2 2), (2 3), (1 4), (5 4))", crs="epsg:25832") |>
+    sf::st_cast("POINT")
+  set.seed(1)
+  predpoints <- sf::st_sample(aoi, 10, type="regular") |>
+    sf::st_set_crs("epsg:25832")
+
+  knndm_obj <- knndm(tpoints, predpoints=predpoints, k=2, maxp=0.8, clustering = "kmeans")
+  expect_no_error(print(knndm_obj))
+  expect_invisible(print(knndm_obj))
+  expect_s3_class(plot(knndm_obj), "ggplot")
 })

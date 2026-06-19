@@ -22,15 +22,19 @@ head(splotdata)
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 wc <- worldclim_global(var="bio",res = 10,path=tempdir())
 elev <- elevation_global(res = 10, path=tempdir())
+
+## ----echo=FALSE---------------------------------------------------------------
+wc_exist = ifelse(exists("wc"), TRUE, FALSE)
+
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 predictors_sp <- crop(c(wc,elev),st_bbox(splotdata))
 names(predictors_sp) <- c(paste0("bio_",1:19),"elev")
 
-
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 plot(predictors_sp$elev)
 plot(splotdata[,"Species_richness"],add=T)
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 predictors <- c("bio_1", "bio_4", "bio_5", "bio_6",
                 "bio_8", "bio_9", "bio_12", "bio_13",
                 "bio_14", "bio_15", "elev")
@@ -45,32 +49,32 @@ model_default <- train(st_drop_geometry(splotdata)[,predictors],
                importance=TRUE, ntree=50,
                trControl=trainControl(method="cv",number=3, savePredictions = "final"))
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 prediction <- predict(predictors_sp,model_default,na.rm=TRUE)
 plot(prediction)
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 model_default
 global_validation(model_default)
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 set.seed(10)
 indices_LLO <- CreateSpacetimeFolds(splotdata,spacevar = "Country",
                                 k=3)
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 set.seed(10)
-indices_knndm <- knndm(splotdata,predictors_sp,k=3)
+indices_knndm <- knndm(splotdata,predictors_sp,k=3, dist_fun = "great_circle")
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
-plot(geodist(splotdata,predictors_sp,cvfolds =model_default$control$indexOut))+ 
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
+plot(geodist(splotdata,predictors_sp,CVtest=model_default$control$indexOut, dist_space = "geographical", dist_fun = "great_circle"))+ 
   scale_x_log10(labels=round)
-plot(geodist(splotdata,predictors_sp,cvfolds =indices_LLO$indexOut))+ 
+plot(geodist(splotdata,predictors_sp,CVtest=indices_LLO$indexOut, dist_space = "geographical", dist_fun = "great_circle"))+ 
   scale_x_log10(labels=round)
-plot(geodist(splotdata,predictors_sp,cvfolds =indices_knndm$indx_test))+ 
+plot(geodist(splotdata,predictors_sp,CVtest=indices_knndm$indx_test, dist_space = "geographical", dist_fun = "great_circle"))+ 
   scale_x_log10(labels=round)
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 model <- train(st_drop_geometry(splotdata)[,predictors],
                    st_drop_geometry(splotdata)$Species_richness,
                    method="rf",
@@ -82,10 +86,10 @@ model <- train(st_drop_geometry(splotdata)[,predictors],
 model
 global_validation(model)
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 plot(varImp(model))
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 set.seed(10)
 ffsmodel <- ffs(st_drop_geometry(splotdata)[,predictors],
                     st_drop_geometry(splotdata)$Species_richness,
@@ -100,14 +104,14 @@ ffsmodel
 global_validation(ffsmodel)
 ffsmodel$selectedvars
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 plot(ffsmodel)
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 prediction_ffs <- predict(predictors_sp, ffsmodel, na.rm=TRUE)
 plot(prediction_ffs)
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 ### AOA for which the spatial CV error applies:
 AOA <- aoa(predictors_sp,ffsmodel,LPD = TRUE, verbose=FALSE)
 
@@ -129,7 +133,7 @@ AOA <- aoa(predictors_sp,ffsmodel,LPD = TRUE, verbose=FALSE)
    tm_layout(frame = FALSE) +
    tm_add_legend(type="polygons", fill = "grey", labels = "Outside \nAOA")
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 plot(c(AOA$DI,AOA$LPD))
 
 errormodel_DI <- errorProfiles(model_default,AOA,variable="DI")
@@ -139,7 +143,7 @@ plot(errormodel_DI)
 plot(errormodel_LPD)
 
 
-## ----message = FALSE, warning=FALSE-------------------------------------------
+## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 expected_error_LPD = terra::predict(AOA$LPD, errormodel_LPD)
 plot(expected_error_LPD)
 

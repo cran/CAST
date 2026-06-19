@@ -6,7 +6,6 @@ library(CAST)
 library(caret)
 library(terra)
 library(sf)
-library(viridis)
 library(gridExtra)
 
 ## ----message = FALSE,include=FALSE, warning=FALSE-----------------------------
@@ -16,7 +15,7 @@ RMSE = function(a, b){
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 predictors <- rast(system.file("extdata","bioclim.tif",package="CAST"))
-plot(predictors,col=viridis(100))
+plot(predictors)
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 
@@ -52,7 +51,7 @@ length(predictornames)-1, replace = TRUE),
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 response <- generate_random_response (predictors, seed = 10)
-plot(response,col=viridis(100),main="virtual response")
+plot(response,main="virtual response")
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 mask <- predictors[[1]]
@@ -64,7 +63,7 @@ mask <- st_make_valid(mask)
 set.seed(15)
 samplepoints <- st_as_sf(st_sample(mask,20,"random"))
 
-plot(response,col=viridis(100))
+plot(response)
 plot(samplepoints,col="red",add=T,pch=3)
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
@@ -100,18 +99,17 @@ print(AOA)
 plot(AOA)
 
 ## ----message = FALSE, warning=FALSE,  fig.show="hold", out.width="50%"--------
-plot(truediff,col=viridis(100),main="true prediction error")
-plot(AOA$DI,col=viridis(100),main="DI")
-plot(AOA$LPD,col=viridis(100),main="LPD")
+plot(truediff,main="true prediction error")
+plot(AOA$DI,main="DI")
+plot(AOA$LPD,main="LPD")
 #mask prediction with AOA:
-plot(mask(prediction,AOA$AOA,maskvalue=0),
-     col=viridis(100),main="Prediction for AOA")
+plot(mask(prediction,AOA$AOA,maskvalue=0),main="Prediction for AOA")
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
 set.seed(25)
 samplepoints <- clustered_sample(mask,75,15,radius=25000)
 
-plot(response,col=viridis(100))
+plot(response)
 plot(samplepoints,col="red",add=T,pch=3)
 
 
@@ -151,12 +149,12 @@ AOA_spatial <- aoa(predictors, model, LPD = TRUE, verbose = FALSE)
 AOA_random <- aoa(predictors, model_random, LPD = FALSE, verbose = FALSE)
 
 ## ----message = FALSE, warning=FALSE,  fig.show="hold", out.width="50%"--------
-plot(AOA_spatial$DI,col=viridis(100),main="DI")
-plot(AOA_spatial$LPD,col=viridis(100),main="LPD")
+plot(AOA_spatial$DI,main="DI")
+plot(AOA_spatial$LPD,main="LPD")
 #mask prediction with AOA:
-plot(mask(prediction,AOA_spatial$AOA,maskvalue=0), col=viridis(100),main="prediction for AOA (spatial CV error applies)",
+plot(mask(prediction,AOA_spatial$AOA,maskvalue=0),main="prediction for AOA (spatial CV error applies)",
      cex.main=0.75)
-plot(mask(prediction_random,AOA_random$AOA,maskvalue=0), col=viridis(100),main="prediction for AOA (random CV error applies)", cex.main=0.75)
+plot(mask(prediction_random,AOA_random$AOA,maskvalue=0),main="prediction for AOA (random CV error applies)", cex.main=0.75)
 
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
@@ -197,9 +195,9 @@ DI_updated_AOA = AOA_spatial$DI > attr(DI_RMSE_relation, "AOA_threshold")
 LPD_updated_AOA = AOA_spatial$DI > attr(LPD_RMSE_relation, "AOA_threshold")
 
 #mask prediction with AOA:
-plot(mask(DI_expected_RMSE,DI_updated_AOA,maskvalue=0),col=viridis(100),main="DI expected RMSE")
+plot(mask(DI_expected_RMSE,DI_updated_AOA,maskvalue=0),main="DI expected RMSE")
 
-plot(mask(LPD_expected_RMSE,LPD_updated_AOA,maskvalue=0),col=viridis(100),main="LPD expected RMSE")
+plot(mask(LPD_expected_RMSE,LPD_updated_AOA,maskvalue=0),main="LPD expected RMSE")
 
 
 ## ----message = FALSE, warning=FALSE-------------------------------------------
@@ -238,13 +236,13 @@ prediction <- predict(studyArea,model,na.rm=TRUE)
 AOA <- aoa(studyArea, model, LPD = TRUE, verbose = FALSE)
 
 #### Plot results:
-plot(AOA$DI,col=viridis(100),main="DI with sampling locations (red)")
+plot(AOA$DI,main="DI with sampling locations (red)")
 plot(pts,zcol="ID",col="red",add=TRUE)
 
-plot(AOA$LPD,col=viridis(100),main="LPD with sampling locations (red)")
+plot(AOA$LPD,main="LPD with sampling locations (red)")
 plot(pts,zcol="ID",col="red",add=TRUE)
 
 #show only predictions inside the AOA (mask):
-plot(mask(prediction,AOA$AOA,maskvalue=0), col=viridis(100), main="prediction for AOA (LOOCV error applies)", cex.main=0.75)
+plot(mask(prediction,AOA$AOA,maskvalue=0), main="prediction for AOA (LOOCV error applies)", cex.main=0.75)
 
 
