@@ -139,8 +139,9 @@ plot(dist_rand, unit = "km")+scale_x_log10(labels=round)
 ## ----message = FALSE, warning=FALSE, results='hide'---------------------------
 predictors_global <- worldclim_global(var="bio",res = 10,path=tempdir())
 
-## ----echo=FALSE---------------------------------------------------------------
-wc_exist = ifelse(exists("predictors_global"), TRUE, FALSE)
+## ----message=FALSE, warning=FALSE, echo=FALSE---------------------------------
+try(predictors_global <- worldclim_global(var="bio",res = 10,path=tempdir()), silent=TRUE)
+wc_exist <- exists("predictors_global") && !is.null(predictors_global)
 
 ## ----message = FALSE, warning=FALSE, results='hide', eval = wc_exist----------
 names(predictors_global) <- c(paste0("bio_",1:19)) 

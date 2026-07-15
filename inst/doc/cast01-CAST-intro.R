@@ -23,8 +23,10 @@ head(splotdata)
 wc <- worldclim_global(var="bio",res = 10,path=tempdir())
 elev <- elevation_global(res = 10, path=tempdir())
 
-## ----echo=FALSE---------------------------------------------------------------
-wc_exist = ifelse(exists("wc"), TRUE, FALSE)
+## ----message=FALSE, warning=FALSE, echo=FALSE---------------------------------
+try(wc <- worldclim_global(var="bio", res=10, path=tempdir()), silent=TRUE)
+try(elev <- elevation_global(res=10, path=tempdir()), silent=TRUE)
+wc_exist <- exists("wc") && exists("elev") && !is.null(wc) && !is.null(elev)
 
 ## ----message = FALSE, warning=FALSE, eval = wc_exist--------------------------
 predictors_sp <- crop(c(wc,elev),st_bbox(splotdata))

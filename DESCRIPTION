@@ -1,7 +1,7 @@
 Package: CAST
 Type: Package
 Title: 'caret' Applications for Spatial-Temporal Models
-Version: 1.1.0
+Version: 1.1.1
 Authors@R: c(person("Hanna", "Meyer", email = "hanna.meyer@uni-muenster.de", role = c("cre", "aut")),
              person("Carles", "Milà", role = c("aut")),
              person("Marvin", "Ludwig", role = c("aut")),
@@ -45,7 +45,7 @@ VignetteBuilder: knitr
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
 NeedsCompilation: no
-Packaged: 2026-06-19 13:21:16 UTC; hanna
+Packaged: 2026-07-15 07:35:29 UTC; hanna
 Author: Hanna Meyer [cre, aut],
   Carles Milà [aut],
   Marvin Ludwig [aut],
@@ -59,4 +59,4 @@ Author: Hanna Meyer [cre, aut],
   Darius Görgen [ctb]
 Maintainer: Hanna Meyer <hanna.meyer@uni-muenster.de>
 Repository: CRAN
-Date/Publication: 2026-06-19 16:20:02 UTC
+Date/Publication: 2026-07-15 10:40:02 UTC
